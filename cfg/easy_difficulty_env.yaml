@@ -10,3 +10,4 @@ robot_model_name: lscm
 begin_poses: [[-3, 3, -3, 3]]
 target_poses: [[-3, 3, -3, 3]]
 
+mbox1: {models:'mobx', }
