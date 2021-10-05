@@ -1,3 +1,5 @@
+import sys
+sys.path.append('../utils/')
 import numpy as np
 import time, atexit, os
 import tensorflow as tf

@@ -1,3 +1,4 @@
+from env import Env
 import rospy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, PointStamped, Point, PoseStamped
@@ -12,12 +13,10 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import copy
 from gz_ros import *
-import subprocess
-import atexit
 import yaml
 from scan_img.msg import RobotState
 
-class GazeboEnv(object):
+class GazeboEnv(Env):
     def __init__(self, cfg_names):
         rospy.init_node("drl")
         self.epoch = 0
@@ -44,7 +43,7 @@ class GazeboEnv(object):
 
         self.state_sub = rospy.Subscriber("/" + self.robot_name + "/state", RobotState, self.state_callback, queue_size=1)
 
-    def _get_states(self, save_img=None):
+    def get_states(self, save_img=None):
         states, images_last, min_dists, collisions, scans, vels = self.get_robots_state()
 
         #for debug
@@ -62,7 +61,7 @@ class GazeboEnv(object):
         return (np.array(states), images_reshape, min_dists, collisions, scans, vels)
 
     #TODO: reward calculation, to be tuned
-    def _get_rewards(self, state, min_dist, is_collision):
+    def get_rewards(self, state, min_dist, is_collision):
         distance_reward_factor = 200
         obs_reward_factor = 100
 
@@ -109,8 +108,6 @@ class GazeboEnv(object):
 
     def reset(self, target_dist = 0.0):
         self.robot_control([0, 0])
-        #self.del_all_obs()
-        #self.empty_robots()
         self.get_avoid_areas()
         time.sleep(0.5)
         self.reset_obs()
@@ -238,8 +235,7 @@ class GazeboEnv(object):
                 self.obs_name.append(model_name)
                 spawn_model(model_name, get_model_sdf(self.envs_cfg['models'][i]), self.obs_range[i][0:3])
 
-
-    def get_model_state(self):
+    def get_robots_state(self):
         state = self.state_last
         image = self.image_trans(state.laser_image)
         goal_pose = [state.pose.position.x, state.pose.position.y]
@@ -248,10 +244,6 @@ class GazeboEnv(object):
         scan = state.laser
         vel = state.vel
         return goal_pose, image, min_dist, is_collision, scan, vel
-
-    def get_robots_state(self):
-        state, image, min_dist, is_collision, scan, vel = self.get_model_state()
-        return state, image, min_dist, is_collision, scan, vel
 
     def random_pose(self, x, y, sita):
         return [random.uniform(x[0],x[1]), random.uniform(y[0],y[1]), random.uniform(sita[0],sita[1])]
@@ -274,6 +266,7 @@ class GazeboEnv(object):
                 return False
         return True
 
+    #remove?
     def random_robots_pose(self, pose_ranges):
         robot_poses = []
         pose_range = random.choice(pose_ranges)
@@ -319,7 +312,7 @@ class GazeboEnv(object):
 
     def read_yaml(self, yaml_file):
         pkg_path = get_pkg_path('gz_pkg')
-        final_file = osp.join(pkg_path, '..', 'drl', 'cfg', yaml_file)
+        final_file = os.path.join(pkg_path, '..', 'drl', 'cfg', yaml_file)
         with open(final_file, 'r') as f:
             self.envs_cfg = yaml.load(f)
         self.robot_radius = self.envs_cfg['robot_radius']
@@ -342,7 +335,6 @@ class GazeboEnv(object):
         self.obstacles_ranges.append([])
 
 if __name__ == '__main__':
-    rospy.init_node("test_env", anonymous=True)
     env = GazeboEnv()
     rospy.sleep(0.5)
     # env.reset()

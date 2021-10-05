@@ -1,11 +1,12 @@
+import sys
+sys.path.append('../network/')
+sys.path.append('../simulator/')
 from network_rl import DQNPrioritizedReplay
 import tensorflow as tf
 import numpy as np
 from gazebo_env import GazeboEnv as ENV
 import rospy
 import math
-from dwa_py3 import DWAPlanner as DWAPlanner
-from dwa_py3 import DWABridge as DWABridge
 
 config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
 sess = tf.Session(config=config)
@@ -31,8 +32,6 @@ RL_prio = DQNPrioritizedReplay(
         learning_rate=Learning_rate, memory_size=MEMORY_SIZE, batch_size=BATCH_SIZE,
         e_greedy_increment=E_greedy_increment, restore_model=is_restore_model, prioritized=True, output_graph=True,
         exp_name=EXP_NAME)
-
-DWA = DWAPlanner(min_x=0.0, max_x=1.0, min_y=-0.2, max_y=0.2, min_z=-1.0, max_z=1.0, acc_x=2.0, acc_y=2.0, acc_z=2.0, v_res=0.1, w_res=0.1, dt=0.2, predict_time=2.0, goal_weight=5.0, head_weight=5.0, obs_weight=10.0, speed_weight=5.0, robot_radius=0.3)
 
 
 def train(RL):
