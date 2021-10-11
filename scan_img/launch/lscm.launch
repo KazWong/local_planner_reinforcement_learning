@@ -1,0 +1,15 @@
+<launch>
+  <arg name="use_sim_time" default="true"/>
+  <param name="/use_sim_time" value="$(arg use_sim_time)"/>
+  <node name="lscm_base_laser_tf" pkg="tf" type="static_transform_publisher" args="0 0 0.5 0 0 0 lscm/base_link lscm/laser_link 50"/>
+  <include file="$(find scan_img)/launch/nodes.launch" >
+    <arg name="image_width" value="100" />
+    <arg name="image_height" value="100" />
+    <arg name="resolution" value="0.05" />
+    <arg name="goal_tolerance" value="0.3" />
+    <arg name="rob_name" value="lscm" />
+    <arg name="collision_th" value="0.5" />
+    <arg name="rob_len" value="0.6" />
+    <arg name="rob_wid" value="0.4" />
+  </include>
+</launch>

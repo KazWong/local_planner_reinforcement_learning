@@ -1,0 +1,264 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="lscmrobot">
+
+    <link name="laser_link">
+      <pose>-0 0 0.5 0 0 0</pose>
+      <gravity>0</gravity>
+      <visual name="visual">
+      	<geometry>
+      	  <box>
+            <size>0.05 0.05 0.05</size>
+          </box>
+      	</geometry>
+      </visual>
+      <collision name='laser_Collision'>
+      	<geometry>
+      	  <box>
+            <size>0.05 0.05 0.05</size>
+          </box>
+      	</geometry>
+      </collision>
+      <self_collide>0</self_collide>
+      <sensor name='contacts' type='contact'>
+        <contact>
+          <collision>laser_Collision</collision>
+        </contact>
+      </sensor>
+      <sensor type="ray" name="agv_lidar">
+        <pose>0 0 0 0 0 0</pose>
+        <visualize>false</visualize>
+        <update_rate>40</update_rate>
+        <ray>
+          <scan>
+            <horizontal>
+              <samples>720</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.14</min_angle>
+              <max_angle>3.14</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.10</min>
+            <max>10.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </ray>
+        <plugin name="gazebo_ros_agv_lidar_controller" filename="libgazebo_ros_laser.so">
+          <topicName>scan</topicName>
+          <frameName>lscm/laser_link</frameName>
+          <robotNamespace>lscm</robotNamespace>
+        </plugin>
+      </sensor>
+    </link>
+
+    <link name="base_link">
+      <pose frame=''>0 0 0.3 0 0 0</pose>
+      <sensor name='contacts' type='contact'>
+        <contact>
+          <collision>base_Collision</collision>
+        </contact>
+      </sensor>
+      <inertial>
+        <mass>50</mass>
+        <inertia>
+          <ixx>2</ixx>
+          <iyy>2.5</iyy>
+          <izz>1.2</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
+        </inertia>
+      </inertial>
+      <self_collide>0</self_collide>
+      <collision name='base_Collision'>
+        <geometry>
+          <box>
+            <size>0.6 0.4 0.27</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name='base_Visual'>
+        <geometry>
+          <box>
+            <size>0.6 0.4 0.27</size>
+          </box>
+        </geometry>
+      </visual>
+    </link>
+
+    <link name="back_right_wheel_link">
+      <self_collide>0</self_collide>
+      <pose frame=''>-0.2 -0.2 0.1 0 1.5707 1.5707</pose>
+      <inertial>
+        <mass>5</mass>
+        <inertia>
+          <ixx>0.013</ixx>
+          <iyy>0.013</iyy>
+          <izz>0.202</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
+        </inertia>
+      </inertial>
+      <collision name='back_right_wheel_Collision'>
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <visual name='back_right_wheel_Visual'>
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+      </visual>
+    </link>
+
+    <link name="back_left_wheel_link">
+      <self_collide>0</self_collide>
+      <pose frame=''>-0.2 0.2 0.1 0 1.5707 1.5707</pose>
+      <inertial>
+        <mass>5</mass>
+        <inertia>
+          <ixx>0.013</ixx>
+          <iyy>0.013</iyy>
+          <izz>0.202</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
+        </inertia>
+      </inertial>
+      <collision name='back_left_wheel_Collision'>
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <visual name='back_left_wheel_Visual'>
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+      </visual>
+    </link>
+
+    <link name="front_left_wheel_link">
+      <pose frame=''>0.2 0.2 0.1 1.5707 1.5707</pose>
+      <inertial>
+        <mass>5</mass>
+        <inertia>
+          <ixx>0.013</ixx>
+          <iyy>0.013</iyy>
+          <izz>0.202</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
+        </inertia>
+      </inertial>
+      <self_collide>0</self_collide>
+      <collision name='front_left_wheel_Collision'>
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <visual name='front_left_wheel_Visual'>
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+      </visual>
+    </link>
+
+    <link name="front_right_wheel_link">
+      <pose frame=''>0.2 -0.2 0.1 1.5707 1.5707</pose>
+      <inertial>
+        <mass>5</mass>
+        <inertia>
+          <ixx>0.013</ixx>
+          <iyy>0.013</iyy>
+          <izz>0.202</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
+        </inertia>
+      </inertial>
+      <self_collide>0</self_collide>
+      <collision name='front_right_wheel_Collision'>
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <visual name='front_right_wheel_Visual'>
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+      </visual>
+    </link>
+
+    <joint type="revolute" name="back_right_wheel_hinge">
+      <pose>0 0 0 0 0 0</pose>
+      <child>back_right_wheel_link</child>
+      <parent>base_link</parent>
+      <axis>
+        <xyz>0 0 1</xyz>
+      </axis>
+    </joint>
+    <joint type="revolute" name="back_left_wheel_hinge">
+      <pose>0 0 0 0 0 0</pose>
+      <child>back_left_wheel_link</child>
+      <parent>base_link</parent>
+      <axis>
+        <xyz>0 0 1</xyz>
+      </axis>
+    </joint>
+    <joint type="revolute" name="front_left_wheel_hinge">
+      <pose>0 0 0 0 0 0</pose>
+      <child>front_left_wheel_link</child>
+      <parent>base_link</parent>
+      <axis>
+        <xyz>0 0 1</xyz>
+      </axis>
+    </joint>
+    <joint type="revolute" name="front_right_wheel_hinge">
+      <pose>0 0 0 0 0 0</pose>
+      <child>front_right_wheel_link</child>
+      <parent>base_link</parent>
+      <axis>
+        <xyz>0 0 1</xyz>
+      </axis>
+    </joint>
+    <joint name="laser_joint" type="fixed">
+      <child>laser_link</child>
+      <parent>base_link</parent>
+    </joint>
+
+    <plugin name="planar_move_controller" filename="libgazebo_ros_planar_move.so">
+      <commandTopic>cmd_vel</commandTopic>
+      <odometryFrame>lscm/odom</odometryFrame> 
+      <odometryTopic>odom</odometryTopic> 
+      <robotBaseFrame>lscm/base_link</robotBaseFrame>
+      <robotNamespace>lscm</robotNamespace>
+      <odometryRate>20.0</odometryRate>
+    </plugin>
+  </model>
+</sdf>

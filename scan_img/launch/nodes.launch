@@ -1,0 +1,33 @@
+<launch>
+  <arg name="image_width" default="100" />
+  <arg name="image_height" default="100" />
+  <arg name="rob_name" default="lscm" />
+  <arg name="resolution" default="0.05" />
+  <arg name="goal_tolerance" default="0.3" />
+  <arg name="track_frame" default="base_link" />
+  <arg name="collision_th" default="0.5" />
+  <arg name="rob_len" default="0.6" />
+  <arg name="rob_wid" default="0.4" />
+  <node pkg="scan_img" type="scan_img_node" name="$(arg rob_name)_scan_image" output="screen">
+    <param name="image_width" value="$(arg image_width)" />
+    <param name="image_height" value="$(arg image_height)" />
+    <param name="resolution" value="$(arg resolution)" />
+    <param name="goal_tolerance" value="$(arg goal_tolerance)" />
+    <param name="laser_topic" value="/$(arg rob_name)/scan" />
+    <param name="image_topic" value="/$(arg rob_name)/scan_image"  />
+    <param name="state_topic" value="/$(arg rob_name)/state"  />
+    <param name="odom_topic" value="/$(arg rob_name)/odom"  />
+    <param name="img_state_topic" value="/$(arg rob_name)/img_state"  />
+    <param name="min_dist_topic" value="/$(arg rob_name)/min_dist"  />
+    <param name="footprint_frame" value="$(arg rob_name)/base_footprint" />
+    <param name="base_frame" value="$(arg rob_name)/base_link" />
+    <param name="laser_frame" value="$(arg rob_name)/laser_link" />
+    <param name="goal_topic" value="$(arg rob_name)/goal" />
+    <param name="robot_name" value="$(arg rob_name)" />
+    <param name="angle_min" value="-3.14" />
+    <param name="angle_max" value="3.14" />
+    <param name="collision_th" value="$(arg collision_th)" />
+    <param name="rob_len" value="$(arg rob_len)" />
+    <param name="rob_wid" value="$(arg rob_wid)" />
+  </node>
+</launch>
