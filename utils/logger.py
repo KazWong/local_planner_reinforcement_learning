@@ -2,10 +2,11 @@ import json
 import joblib
 import shutil
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import time, os
 
-
+tf.disable_v2_behavior()
+tf.enable_resource_variables()
 
 class EpochLogger(object):
     def __init__(self, output_dir=None, output_fname='progress.txt'):
@@ -22,7 +23,7 @@ class EpochLogger(object):
         self.log_current_row = {}
 
     def log_tabular(self, key, val):
-        #epoch, step, EpLen, EpRet, Loss, 
+        #epoch, step, EpLen, EpRet, Loss,
         if self.first_row:
             self.log_headers.append(key)
         else:
@@ -67,7 +68,7 @@ class EpochLogger(object):
             self.train_saver = tf.train.Saver()
         fpath = 'train_save' + ('%d'%itr if itr is not None else '')
         fpath = os.path.join(self.output_dir, fpath)
-        print fpath
+        print(fpath)
         self.train_saver.restore(sess, tf.train.latest_checkpoint(fpath))
         print("Model restored from path: %s" % fpath)
 
@@ -78,4 +79,3 @@ class EpochLogger(object):
         output = json.dumps(config_json)
         with open(os.path.join(self.output_dir, "config.json"), 'w') as out:
             out.write(output)
-

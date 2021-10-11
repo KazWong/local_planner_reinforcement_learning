@@ -2,9 +2,12 @@ import sys
 sys.path.append('../utils/')
 import numpy as np
 import time, atexit, os
-import tensorflow as tf
-import tensorflow.contrib.slim as slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from logger import EpochLogger
+
+tf.disable_v2_behavior()
+tf.enable_resource_variables()
 
 #for np.random.uniform
 np.random.seed(1)
@@ -129,7 +132,7 @@ class DQNPrioritizedReplay:
         self.logger = EpochLogger(**logger_kwargs)
         self.n_actions = n_actions
         self.lr = learning_rate
-        #gradual epsilon decays 
+        #gradual epsilon decays
         self.gamma = reward_decay
         #random factor to choose action
         self.epsilon_max = e_greedy
@@ -161,10 +164,10 @@ class DQNPrioritizedReplay:
         else:
             #(S,S',A,R) for every memory
             self.memory = np.zeros((self.memory_size, n_features*2+2))
-        
+
         config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
         self.sess = tf.Session(config=config)
-        
+
         if self.restore_model == False:
             self.sess.run(tf.global_variables_initializer())
         else:
@@ -327,4 +330,3 @@ class DQNPrioritizedReplay:
 
     def save_train_model(self):
         self.logger.save_train_model(self.sess)
-

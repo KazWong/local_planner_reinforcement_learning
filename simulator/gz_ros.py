@@ -12,7 +12,7 @@ def delete_model(model_name):
         delete_model_srv = rospy.ServiceProxy('/gazebo/delete_model', DeleteModel)
         resp = delete_model_srv(model_name)
         return resp.success
-    except rospy.ServiceException, e:
+    except rospy.ServiceException as e:
         print("Service call failed: %s"%e)
 
 def spawn_model(model_name, model_xml, initial_pose=[0,0], robot_namespace='', reference_frame='world'):
@@ -21,7 +21,7 @@ def spawn_model(model_name, model_xml, initial_pose=[0,0], robot_namespace='', r
         spawn_sdf_model = rospy.ServiceProxy('/gazebo/spawn_sdf_model', SpawnModel)
         resp = spawn_sdf_model(model_name, model_xml, robot_namespace, to_pose_msg(initial_pose), reference_frame)
         return resp.success
-    except rospy.ServiceException, e:
+    except rospy.ServiceException as e:
         print("Service call failed: %s"%e)
 
 def to_pose_msg(data):
@@ -58,11 +58,11 @@ def to_pose_msg(data):
             pose.orientation.w = q[3]
             return pose
         else:
-            return False    
+            return False
 
 def get_pkg_path(pkg_name):
     rospack = rospkg.RosPack()
-    return rospack.get_path(pkg_name)   
+    return rospack.get_path(pkg_name)
 
 def get_model_sdf(model_name):
     pkg_path = get_pkg_path('gz_pkg')
@@ -77,7 +77,7 @@ def get_world_models():
         get_world_properties = rospy.ServiceProxy('/gazebo/get_world_properties', GetWorldProperties)
         resp = get_world_properties()
         return resp.model_names
-    except rospy.ServiceException, e:
+    except rospy.ServiceException as e:
         print("Service call failed: %s"%e)
 
 def set_model_state(model_name, pose, twist=None, frame='world'):
@@ -93,5 +93,5 @@ def set_model_state(model_name, pose, twist=None, frame='world'):
         model_state.reference_frame = frame
         resp = set_model(model_state)
         return resp.success
-    except rospy.ServiceException, e:
+    except rospy.ServiceException as e:
         print("Service call failed: %s"%e)

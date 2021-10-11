@@ -14,6 +14,7 @@ from cv_bridge import CvBridge, CvBridgeError
 import copy
 from gz_ros import *
 import yaml
+import os
 from scan_img.msg import RobotState
 
 class GazeboEnv(Env):
@@ -30,14 +31,14 @@ class GazeboEnv(Env):
 
         self.reset_count = 0
         #no use
-        self.step_count = 0 
+        self.step_count = 0
 
         self.discrete_actions = \
         [[0.0, -0.9], [0.0, -0.6], [0.0, -0.3], [0.0, 0.05], [0.0, 0.3], [0.0, 0.6], [0.0, 0.9],
         [0.2, -0.9], [0.2, -0.6], [0.2, -0.3], [0.2, 0], [0.2, 0.3], [0.2, 0.6], [0.2, 0.9],
         [0.4, -0.9], [0.4, -0.6], [0.4, -0.3], [0.4, 0], [0.4, 0.3], [0.4, 0.6], [0.4, 0.9],
         [0.6, -0.9], [0.6, -0.6], [0.6, -0.3], [0.6, 0], [0.6, 0.3], [0.6, 0.6], [0.6, 0.9]]
-         
+
 
         self.bridge = CvBridge()
 
@@ -75,7 +76,7 @@ class GazeboEnv(Env):
             else:
                 collision_reward = (min_dist - self.last_d_obs) * obs_reward_factor
                 self.last_d_obs = min_dist
-        
+
         print("collision: ", is_collision)
 
         #if min_dist <= self.collision_th:
@@ -114,21 +115,21 @@ class GazeboEnv(Env):
         time.sleep(0.5)
         self.reset_robots(target_dist=target_dist)
         time.sleep(1.0)
-        
+
         self.last_d_obs = -1
         self.last_d = -1
         self.done = 0
 
         self.reset_count += 1
         self.step_count = 0
-        return self._get_states()
+        return self.get_states()
 
     def step(self, action):
         self.robot_control(action)
         rospy.sleep(self.control_hz)
         self.step_count += 1
-        states = self._get_states()
-        rw = self._get_rewards(states[0], states[2], states[3])
+        states = self.get_states()
+        rw = self.get_rewards(states[0], states[2], states[3])
         if rw == False:
             return False, False, False
         else:
@@ -165,11 +166,11 @@ class GazeboEnv(Env):
             pose_type = self.envs_cfg['model_poses_type'][i]
             if pose_type == 'fix':
                 self.rob_avoid_areas.append(pose_range[0:2] + [model_radius])
-    
+
     def reset_robots(self, target_dist=0.0):
         self.init_poses = []
         self.target_poses = []
-        
+
         #send goal in the odom frame
         goal_msg = PoseStamped()
         goal_msg.header.frame_id = self.robot_name + "/odom"
@@ -282,7 +283,7 @@ class GazeboEnv(Env):
 
     def robot_control(self, action):
         vel = Twist()
-        
+
         if self.done == 0:
             vel.linear.x = action[0]
             vel.angular.z = action[1]
@@ -312,12 +313,13 @@ class GazeboEnv(Env):
 
     def read_yaml(self, yaml_file):
         pkg_path = get_pkg_path('gz_pkg')
+        #final_file = os.path.join(pkg_path, 'drl', 'cfg', yaml_file)
         final_file = os.path.join(pkg_path, '..', 'drl', 'cfg', yaml_file)
         with open(final_file, 'r') as f:
             self.envs_cfg = yaml.load(f)
         self.robot_radius = self.envs_cfg['robot_radius']
         self.robot_model_name = self.envs_cfg['robot_model_name']
- 
+
     def init_datas(self):
         self.last_d = -1
         self.last_d_obs = -1

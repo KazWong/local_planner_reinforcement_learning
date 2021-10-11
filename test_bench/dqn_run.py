@@ -2,11 +2,14 @@ import sys
 sys.path.append('../network/')
 sys.path.append('../simulator/')
 from network_rl import DQNPrioritizedReplay
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import numpy as np
 from gazebo_env import GazeboEnv as ENV
 import rospy
 import math
+
+tf.disable_v2_behavior()
+tf.enable_resource_variables()
 
 config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
 sess = tf.Session(config=config)
@@ -217,4 +220,3 @@ if is_train:
     train(RL_prio)
 else:
     test(RL_prio, test_replay_=200)
-
