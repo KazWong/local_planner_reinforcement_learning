@@ -19,17 +19,11 @@ from scan_img.msg import RobotState
 
 class GazeboEnv(Env):
     def __init__(self, cfg_names):
+        super().__init__(cfg_names)
         rospy.init_node("drl")
-        self.epoch = 0
-        self.cfg_names = cfg_names
-        self.read_yaml(cfg_names[0])
-        self.collision_th = 0.5
-        self.control_hz = 0.2
-        self.image_size = (60, 60)
         self.image_batch = 1
         self.init_datas()
 
-        self.reset_count = 0
         #no use
         self.step_count = 0
 
@@ -118,7 +112,6 @@ class GazeboEnv(Env):
 
         self.last_d_obs = -1
         self.last_d = -1
-        self.done = 0
 
         self.reset_count += 1
         self.step_count = 0
@@ -304,13 +297,6 @@ class GazeboEnv(Env):
             x += 3 * self.robot_radius
             set_model_state(self.robot_name, [x, y])
 
-    def set_img_size(self, img_size):
-        self.image_size = img_size
-        self.init()
-
-    def set_colis_dist(self, dist):
-        self.collision_th = dist
-
     def read_yaml(self, yaml_file):
         pkg_path = get_pkg_path('gz_pkg')
         final_file = os.path.join(pkg_path, 'drl', 'cfg', yaml_file)
@@ -335,8 +321,3 @@ class GazeboEnv(Env):
         self.vel_pub = rospy.Publisher( '/' + self.robot_name + '/cmd_vel', Twist, queue_size=1)
         self.goal_pub = rospy.Publisher( '/' + self.robot_name + '/goal', PoseStamped, queue_size=1)
         self.obstacles_ranges.append([])
-
-if __name__ == '__main__':
-    env = GazeboEnv()
-    rospy.sleep(0.5)
-    # env.reset()

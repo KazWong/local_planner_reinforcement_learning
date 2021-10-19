@@ -8,7 +8,7 @@ from argparse import Namespace
 
 from omni.isaac.python_app import OmniKitHelper
 
-class IsaacEnv(object):
+class IsaacEnv(Env):
 	def __init__(self, cfg_names):
         self.cfg_names = cfg_names
 

@@ -4,7 +4,7 @@ sys.path.append('../simulator/')
 from network_rl import DQNPrioritizedReplay
 import tensorflow.compat.v1 as tf
 import numpy as np
-from gazebo_env import GazeboEnv as ENV
+from isaac_env import IsaacEnv as ENV
 import rospy
 import math
 
