@@ -1,3 +1,4 @@
+from env import Env
 import numpy as np
 import random
 import os
@@ -10,7 +11,7 @@ from omni.isaac.python_app import OmniKitHelper
 
 class IsaacEnv(Env):
 	def __init__(self, cfg_names):
-        self.cfg_names = cfg_names
+        super().__init__(cfg_names)
 
     def get_states(self):
         pass

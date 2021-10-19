@@ -1,7 +1,12 @@
 import tf
 from geometry_msgs.msg import Pose, Quaternion, Point
+import rospkg
 import math
 import numpy as np
+
+def get_pkg_path(pkg_name):
+    rospack = rospkg.RosPack()
+    return rospack.get_path(pkg_name)
 
 def q_to_rpy(q):
     if type(q) == list or type(q) == tuple:

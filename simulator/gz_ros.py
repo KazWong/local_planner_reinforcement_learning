@@ -3,7 +3,6 @@ from gazebo_msgs.srv import *
 from gazebo_msgs.msg import ModelState
 from geometry_msgs.msg import Pose, Twist
 import ros_utils as util
-import rospkg
 import os.path as osp
 
 def delete_model(model_name):
@@ -60,12 +59,8 @@ def to_pose_msg(data):
         else:
             return False
 
-def get_pkg_path(pkg_name):
-    rospack = rospkg.RosPack()
-    return rospack.get_path(pkg_name)
-
 def get_model_sdf(model_name):
-    pkg_path = get_pkg_path('gz_pkg')
+    pkg_path = util.get_pkg_path('gz_pkg')
     final_file = osp.join(pkg_path, 'sdf', model_name, 'model.sdf')
     with open(final_file,'r') as f:
         sdf = f.read()

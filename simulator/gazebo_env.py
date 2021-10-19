@@ -1,26 +1,16 @@
 from env import Env
-import rospy
-from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist, PointStamped, Point, PoseStamped
-from std_msgs.msg import Int8
+from gz_ros import *
+
 import math
-import ros_utils as util
 import random
 import numpy as np
 import time
 import cv2
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge, CvBridgeError
 import copy
-from gz_ros import *
-import yaml
-import os
-from scan_img.msg import RobotState
 
 class GazeboEnv(Env):
     def __init__(self, cfg_names):
         super().__init__(cfg_names)
-        rospy.init_node("drl")
         self.image_batch = 1
         self.init_datas()
 
@@ -32,11 +22,6 @@ class GazeboEnv(Env):
         [0.2, -0.9], [0.2, -0.6], [0.2, -0.3], [0.2, 0], [0.2, 0.3], [0.2, 0.6], [0.2, 0.9],
         [0.4, -0.9], [0.4, -0.6], [0.4, -0.3], [0.4, 0], [0.4, 0.3], [0.4, 0.6], [0.4, 0.9],
         [0.6, -0.9], [0.6, -0.6], [0.6, -0.3], [0.6, 0], [0.6, 0.3], [0.6, 0.6], [0.6, 0.9]]
-
-
-        self.bridge = CvBridge()
-
-        self.state_sub = rospy.Subscriber("/" + self.robot_name + "/state", RobotState, self.state_callback, queue_size=1)
 
     def get_states(self, save_img=None):
         states, images_last, min_dists, collisions, scans, vels = self.get_robots_state()
@@ -131,18 +116,6 @@ class GazeboEnv(Env):
     def step_discrete(self, action):
         return self.step(self.discrete_actions[action])
 
-    def image_trans(self, img_ros):
-        try:
-          cv_image = self.bridge.imgmsg_to_cv2(img_ros, desired_encoding="passthrough")
-        except CvBridgeError as e:
-          print(e)
-        image = cv2.resize(cv_image, self.image_size) / 255.0
-        return image
-
-    def state_callback(self, msg):
-        if self.robot_name in msg.laser_image.header.frame_id:
-            self.state_last = msg
-
     #TODO
     def get_avoid_areas(self):
         #obstacle cannot be placed on the robot
@@ -164,11 +137,6 @@ class GazeboEnv(Env):
         self.init_poses = []
         self.target_poses = []
 
-        #send goal in the odom frame
-        goal_msg = PoseStamped()
-        goal_msg.header.frame_id = self.robot_name + "/odom"
-        goal_msg.header.stamp = rospy.Time.now()
-
         #start
         while True:
             pose_range = self.envs_cfg['begin_poses'][0]
@@ -180,8 +148,8 @@ class GazeboEnv(Env):
         if self.robot_name in get_world_models():
             set_model_state(self.robot_name, self.init_poses[0])
         else:
-            print(self.robot_model_name)
-            spawn_model(self.robot_name, get_model_sdf(self.robot_model_name), self.init_poses[0], self.robot_name)
+            print(self.robot_name)
+            spawn_model(self.robot_name, get_model_sdf(self.robot_name), self.init_poses[0], self.robot_name)
 
         #goal
         while True:
@@ -190,16 +158,7 @@ class GazeboEnv(Env):
             if (self.init_poses[0][0] - rand_pose[0]) ** 2 + (self.init_poses[0][1] - rand_pose[1]) ** 2 > target_dist ** 2 and self.free_check_robot(rand_pose[0], rand_pose[1], self.target_poses) and self.free_check_obj([rand_pose[0], rand_pose[1], self.robot_radius], self.obs_range):
                 self.target_poses.append(rand_pose[:])
                 break
-
-        goal_msg.pose.position.x = self.target_poses[0][0]
-        goal_msg.pose.position.y = self.target_poses[0][1]
-        rpy = [0, 0, self.target_poses[0][2]]
-        q = util.rpy_to_q(rpy)
-        goal_msg.pose.orientation.x = q[0]
-        goal_msg.pose.orientation.y = q[1]
-        goal_msg.pose.orientation.z = q[2]
-        goal_msg.pose.orientation.w = q[3]
-        self.goal_pub.publish(goal_msg)
+        self.publish_goal(self.target_poses)
 
     def del_all_obs(self):
         for model_name in self.obs_name:
@@ -274,20 +233,6 @@ class GazeboEnv(Env):
                 break
         return robot_poses[:]
 
-    def robot_control(self, action):
-        vel = Twist()
-
-        if self.done == 0:
-            vel.linear.x = action[0]
-            vel.angular.z = action[1]
-        else:
-            vel.linear.x = 0
-            vel.angular.z = 0
-        self.vel_pub.publish(vel)
-
-    def get_robot_name(self, i):
-        return self.robot_model_name
-
     #TODO:
     def empty_robots(self):
         model_names = get_world_models()
@@ -297,27 +242,14 @@ class GazeboEnv(Env):
             x += 3 * self.robot_radius
             set_model_state(self.robot_name, [x, y])
 
-    def read_yaml(self, yaml_file):
-        pkg_path = get_pkg_path('gz_pkg')
-        final_file = os.path.join(pkg_path, 'drl', 'cfg', yaml_file)
-        #final_file = os.path.join(pkg_path, '..', 'drl', 'cfg', yaml_file)
-        with open(final_file, 'r') as f:
-            self.envs_cfg = yaml.load(f)
-        self.robot_radius = self.envs_cfg['robot_radius']
-        self.robot_model_name = self.envs_cfg['robot_model_name']
-
     def init_datas(self):
         self.last_d = -1
         self.last_d_obs = -1
         self.images_batch = [None] * self.image_batch
         self.images_ptr = []
-        self.state_last = None
-        self.robot_name = self.get_robot_name(0)
         self.obs_name = []
         self.done = 0
         self.obstacles_ranges = []
 
         self.images_ptr.append(0)
-        self.vel_pub = rospy.Publisher( '/' + self.robot_name + '/cmd_vel', Twist, queue_size=1)
-        self.goal_pub = rospy.Publisher( '/' + self.robot_name + '/goal', PoseStamped, queue_size=1)
         self.obstacles_ranges.append([])
