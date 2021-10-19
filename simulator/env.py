@@ -91,13 +91,13 @@ class Env(object):
             self.state_last = msg
 
     def get_states(self):
-        pass
+        raise NotImplementedError()
 
     def get_rewards(self):
-        pass
+        raise NotImplementedError()
 
     def reset(self):
-        pass
+        raise NotImplementedError()
 
     def step_discrete(self, action):
-        pass
+        raise NotImplementedError()

@@ -24,6 +24,3 @@ class IsaacEnv(Env):
 
     def step_discrete(self, action):
         pass
-
-    def robot_control(self, action):
-        pass

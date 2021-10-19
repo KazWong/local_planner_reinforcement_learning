@@ -61,3 +61,39 @@ def transform_point(m, point):
 
 def mul_matrix(m1, m2):
     return np.dot(m1, m2)
+
+def to_pose_msg(data):
+    pose = Pose()
+    if type(data) == list or type(data) == tuple:
+        if len(data) == 2:
+            pose.position.x = data[0]
+            pose.position.y = data[1]
+            pose.orientation.w = 1
+            return pose
+        pose.position.x = data[0]
+        pose.position.y = data[1]
+        if len(data) == 6:
+            pose.position.z = data[2]
+            q = rpy_to_q(data[3:])
+            pose.orientation.x = q[0]
+            pose.orientation.y = q[1]
+            pose.orientation.z = q[2]
+            pose.orientation.w = q[3]
+            return pose
+        elif len(data) == 7:
+            pose.position.z = data[2]
+            pose.orientation.x = data[3]
+            pose.orientation.y = data[4]
+            pose.orientation.z = data[5]
+            pose.orientation.w = data[6]
+            return pose
+        elif len(data) == 3:
+            pose.position.z = 0
+            q = rpy_to_q([0, 0, data[2]])
+            pose.orientation.x = q[0]
+            pose.orientation.y = q[1]
+            pose.orientation.z = q[2]
+            pose.orientation.w = q[3]
+            return pose
+        else:
+            return False

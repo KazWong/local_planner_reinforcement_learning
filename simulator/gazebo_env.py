@@ -97,6 +97,7 @@ class GazeboEnv(Env):
 
         self.last_d_obs = -1
         self.last_d = -1
+        self.done = 0
 
         self.reset_count += 1
         self.step_count = 0
