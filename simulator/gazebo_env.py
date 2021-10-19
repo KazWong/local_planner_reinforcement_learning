@@ -313,8 +313,8 @@ class GazeboEnv(Env):
 
     def read_yaml(self, yaml_file):
         pkg_path = get_pkg_path('gz_pkg')
-        #final_file = os.path.join(pkg_path, 'drl', 'cfg', yaml_file)
-        final_file = os.path.join(pkg_path, '..', 'drl', 'cfg', yaml_file)
+        final_file = os.path.join(pkg_path, 'drl', 'cfg', yaml_file)
+        #final_file = os.path.join(pkg_path, '..', 'drl', 'cfg', yaml_file)
         with open(final_file, 'r') as f:
             self.envs_cfg = yaml.load(f)
         self.robot_radius = self.envs_cfg['robot_radius']
