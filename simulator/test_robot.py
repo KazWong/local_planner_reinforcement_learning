@@ -10,7 +10,31 @@ class Robot_config:
         self.robot_prim = robot_prim
         self.ar = None
         self.stage = stage
+
+    def spawn(self, prim_path):
+        from pxr import UsdGeom, Gf, UsdPhysics
+        TRANSLATION_RANGE = 1000.0
+        translation = np.random.rand(3) * TRANSLATION_RANGE
+        angle = np.random.rand(1)
+        xform = UsdGeom.Xformable(self.robot_prim)
+        xform_op = xform.AddXformOp(UsdGeom.XformOp.TypeTransform, UsdGeom.XformOp.PrecisionDouble, "")
+        mat = Gf.Matrix4d().SetTranslate(translation.tolist())
+        mat.SetRotateOnly(Gf.Rotation(Gf.Vec3d(0, 0, 1), (angle[0])))
+        xform_op.Set(mat)
+        DRIVE_STIFFNESS = 10000.0
+        # Set joint drive parameters
+        wheel_back_left_joint = UsdPhysics.DriveAPI.Apply(self.stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_back_left_joint"), "angular")
+        wheel_back_left_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
         
+        wheel_back_right_joint = UsdPhysics.DriveAPI.Apply(self.stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_back_right_joint"), "angular")
+        wheel_back_right_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
+        
+        wheel_front_left_joint = UsdPhysics.DriveAPI.Apply(self.stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_front_left_joint"), "angular")
+        wheel_front_left_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
+        
+        wheel_front_right_joint = UsdPhysics.DriveAPI.Apply(self.stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_front_right_joint"), "angular")
+        wheel_front_right_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
+	
     def teleport(self, location, rotation, settle=False):
         from pxr import Gf
         from omni.isaac.dynamic_control import _dynamic_control
@@ -31,7 +55,7 @@ class Robot_config:
         self.dc.set_rigid_body_pose(chassis, tf)
         self.dc.set_rigid_body_linear_velocity(chassis, [0, 0, 0])
         self.dc.set_rigid_body_angular_velocity(chassis, [0, 0, 0])
-        # self.command((-20, 20, -20, 20))
+        self.command((-20, 20, -20, 20))
         # Settle the robot onto the ground
         if settle:
             frame = 0
