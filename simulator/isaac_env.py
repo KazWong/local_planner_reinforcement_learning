@@ -1,3 +1,4 @@
+from env import Env
 import numpy as np
 import random
 import os
@@ -11,6 +12,7 @@ from omni.isaac.python_app import OmniKitHelper
 
 class IsaacEnv(Env):
 	def __init__(self, cfg_names):
+        super().__init__(cfg_names)
         self.cfg_names = cfg_names
         self.startup_config = {
 		"renderer": "RayTracedLighting",
@@ -26,9 +28,15 @@ class IsaacEnv(Env):
 	    self.robot_prim = self.stage.DefinePrim(self.prim_path, "Xform")
 	    self.robot_prim.GetReferences().AddReference("/Library/Robots/config_robot/robot_event_cam")
 	    self.test_rob = Robot_config(self.stage, omni, self.robot_prim)
-	    
+
     def get_states(self):
-        pass
+        states = None
+        images_last = None
+        min_dists = None
+        # collision boolean value
+        collisions = None
+        scans = None
+        vels = None
 
     def get_rewards(self):
         pass

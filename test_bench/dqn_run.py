@@ -150,7 +150,7 @@ def test(RL,test_replay_):
             total_delta_v += math.fabs(v - env.discrete_actions[last_action][0])
             total_delta_w += math.fabs(w - env.discrete_actions[last_action][1])
 
-            observation_, reward, done = env.step_discrete(action)
+            observation_, reward, done = env.step_discret(action)
 
             if is_end == 0:
                 ep_return += reward
