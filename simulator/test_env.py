@@ -38,16 +38,16 @@ class Env_config:
                 object_list.append("/World/Cylinder_"+str(num))
     
         # create sphere
-        for num in range(sphere_num):
+        #for num in range(sphere_num):
             # create first sphere
-            result, path = self.omni.kit.commands.execute("CreateMeshPrimCommand", prim_type="Sphere")
-            if num == 0:
-                object_list.append("/World/Sphere")
-                continue
-            if num < 10:
-                object_list.append("/World/Sphere_0"+str(num))
-            else:
-                object_list.append("/World/Sphere_"+str(num))
+        #    result, path = self.omni.kit.commands.execute("CreateMeshPrimCommand", prim_type="Sphere")
+        #    if num == 0:
+        #        object_list.append("/World/Sphere")
+        #        continue
+        #    if num < 10:
+        #        object_list.append("/World/Sphere_0"+str(num))
+        #    else:
+        #        object_list.append("/World/Sphere_"+str(num))
     
         for mesh in object_list:
             translation = np.random.rand(3) * TRANSLATION_RANGE

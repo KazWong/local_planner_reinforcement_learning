@@ -1,6 +1,7 @@
 import sys
 sys.path.append('../network/')
 sys.path.append('../simulator/')
+sys.path.append('..')
 from network_rl import DQNPrioritizedReplay
 import tensorflow.compat.v1 as tf
 import numpy as np
@@ -27,9 +28,9 @@ Learning_rate = 0.0005
 E_greedy_increment = 0.00005    #random or network update, e-greedy algo
 
 if is_train:
-    env = ENV(['easy_difficulty_env.yaml'])
+    env = ENV(['easy_difficulty_env_isaac.yaml'])
 else:
-    env = ENV(['easy_difficulty_env.yaml'])
+    env = ENV(['easy_difficulty_env_isaac.yaml'])
 RL_prio = DQNPrioritizedReplay(
         n_actions=len(env.discrete_actions), image_size=[env.image_size[0], env.image_size[1], env.image_batch],
         learning_rate=Learning_rate, memory_size=MEMORY_SIZE, batch_size=BATCH_SIZE,
