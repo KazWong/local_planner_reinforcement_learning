@@ -43,6 +43,8 @@ def train(RL):
     epochs = 1000000
     steps_per_epoch = 1500
     episode_max_len = 300
+    env.env_init()
+    env.robot_init()
     for epoch in range(epochs):
         #every epoch, save model and output summary log
         env.epoch = epoch
