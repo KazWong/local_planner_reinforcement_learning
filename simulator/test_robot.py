@@ -25,16 +25,16 @@ class Robot_config:
         # Set joint drive parameters
         wheel_back_left_joint = UsdPhysics.DriveAPI.Apply(self.stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_back_left_joint"), "angular")
         wheel_back_left_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
-        
+
         wheel_back_right_joint = UsdPhysics.DriveAPI.Apply(self.stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_back_right_joint"), "angular")
         wheel_back_right_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
-        
+
         wheel_front_left_joint = UsdPhysics.DriveAPI.Apply(self.stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_front_left_joint"), "angular")
         wheel_front_left_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
-        
+
         wheel_front_right_joint = UsdPhysics.DriveAPI.Apply(self.stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_front_right_joint"), "angular")
         wheel_front_right_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
-	
+
     def teleport(self, location, rotation, settle=False):
         from pxr import Gf
         from omni.isaac.dynamic_control import _dynamic_control
@@ -44,10 +44,10 @@ class Robot_config:
         self.ar = self.dc.get_articulation(self.robot_prim.GetPath().pathString)
         print("after teleport", self.ar)
         chassis = self.dc.get_articulation_root_body(self.ar)
-    
+
         self.dc.wake_up_articulation(self.ar)
         rot_quat = Gf.Rotation(Gf.Vec3d(0, 0, 1), rotation).GetQuaternion()
-    
+
         tf = _dynamic_control.Transform(
             location,
             (rot_quat.GetImaginary()[0], rot_quat.GetImaginary()[1], rot_quat.GetImaginary()[2], rot_quat.GetReal()),
@@ -65,13 +65,28 @@ class Robot_config:
                 lin_vel = self.dc.get_rigid_body_linear_velocity(chassis)
                 velocity = np.linalg.norm([lin_vel.x, lin_vel.y, lin_vel.z])
                 frame = frame + 1
-    
-    def command(self,motor_value): 
+
+    def IK(self, cmd_vel):
+        v = [0, 0, 0, 0]
+		v[0] = - cmd_vel[0] + cmd_vel[1] + (lx_ly)*cmd_vel[2];
+		v[1] =   cmd_vel[0] + cmd_vel[1] + (lx_ly)*cmd_vel[2];
+		v[2] = - cmd_vel[0] - cmd_vel[1] + (lx_ly)*cmd_vel[2];
+		v[3] =   cmd_vel[0] - cmd_vel[1] + (lx_ly)*cmd_vel[2];
+        return v
+
+    def FK(self, feedback):
+        odom = [0, 0, 0]
+        odom[0] = (-feedback[0] + feedback[1] - feedback[2] + feedback[3]) / 4.
+        odom[1] = ( feedback[0] + feedback[1] - feedback[2] - feedback[3]) / 4.
+        odom[2] = ( feedback[0] + feedback[1] + feedback[2] + feedback[3]) / (lx_ly*4.)
+        return odom
+
+    def command(self, cmd_vel):
         chassis = self.dc.get_articulation_root_body(self.ar)
         #num_joints = self.dc.get_articulation_joint_count(self.ar)
         #num_dofs = self.dc.get_articulation_dof_count(self.ar)
         #num_bodies = self.dc.get_articulation_body_count(self.ar)
-                           
+
         wheel_back_left = self.dc.find_articulation_dof(self.ar, "wheel_back_left_joint")
         wheel_back_right = self.dc.find_articulation_dof(self.ar, "wheel_back_right_joint")
         wheel_front_left = self.dc.find_articulation_dof(self.ar, "wheel_front_left_joint")
@@ -79,21 +94,22 @@ class Robot_config:
 
         self.dc.wake_up_articulation(self.ar)
 
+        motor_value = IK(cmd_vel)
         wheel_back_left_speed = self.wheel_speed_from_motor_value(motor_value[0])
         wheel_back_right_speed = self.wheel_speed_from_motor_value(motor_value[1])
         wheel_front_left_speed = self.wheel_speed_from_motor_value(motor_value[2])
         wheel_front_right_speed = self.wheel_speed_from_motor_value(motor_value[3])
-        
+
         self.dc.set_dof_velocity_target(wheel_back_left, np.clip(wheel_back_left_speed, -10, 10))
-        self.dc.set_dof_velocity_target(wheel_back_right, np.clip(wheel_back_right_speed, -10, 10))      
+        self.dc.set_dof_velocity_target(wheel_back_right, np.clip(wheel_back_right_speed, -10, 10))
         self.dc.set_dof_velocity_target(wheel_front_left, np.clip(wheel_front_left_speed, -10, 10))
         self.dc.set_dof_velocity_target(wheel_front_right, np.clip(wheel_front_right_speed, -10, 10))
-    
+
     # idealized motor model
     def wheel_speed_from_motor_value(self, motor_input):
         print("speed is ",motor_input)
         return motor_input
-        
+
     def check_overlap_box(self):
         # Defines a cubic region to check overlap with
         import omni.physx
@@ -105,7 +121,7 @@ class Robot_config:
         #print("chassis is ", chassis)
         #print("pose is ", robot_base_pose)
         print("pose is ", robot_base_pose.p)
-        #print("*"*50)        
+        #print("*"*50)
         extent = carb.Float3(38.0, 26.0, 5.0)
         # origin = carb.Float3(0.0, 0.0, 0.0)
         origin = robot_base_pose.p

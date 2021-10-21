@@ -26,7 +26,7 @@ class IsaacEnv(Env):
 	    self.robot_prim = self.stage.DefinePrim(self.prim_path, "Xform")
 	    self.robot_prim.GetReferences().AddReference("/Library/Robots/config_robot/robot_event_cam")
 	    self.test_rob = Robot_config(self.stage, omni, self.robot_prim)
-	    
+
     def get_states(self):
         pass
 
@@ -38,14 +38,14 @@ class IsaacEnv(Env):
         dr_interface.randomize_once()
         # random robot pose x y z, angle
         self.test_rob.teleport((0,0,30), 0)
-        
+
     def step_discrete(self, action):
         pass
 
     def robot_control(self, action):
         # wheel_back_left, wheel_back_right, wheel_front_left, wheel_front_right
-        self.test_rob.command((-20, 20, -20, 20))
-        
+        self.test_rob.command((action[0], 0, action[1]))
+
     def env_init(self):
         import omni.isaac.dr as dr
         obj_list = self.test_env.create_objects(4,4,4)
