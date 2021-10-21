@@ -1,3 +1,4 @@
+from env import Env
 import numpy as np
 import random
 import os
@@ -11,6 +12,7 @@ from omni.isaac.python_app import OmniKitHelper
 
 class IsaacEnv(Env):
 	def __init__(self, cfg_names):
+		super().__init__(cfg_names)
         self.cfg_names = cfg_names
         self.startup_config = {
 		"renderer": "RayTracedLighting",
@@ -54,3 +56,4 @@ class IsaacEnv(Env):
 
     def robot_init(self):
         self.test_rob.spawn(self.prim_path)
+
