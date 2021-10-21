@@ -88,7 +88,7 @@ class Env(object):
 
     def state_callback(self, msg):
         if self.robot_name in msg.laser_image.header.frame_id:
-            self.state_last = msg
+            self.state_last = msg # sub msg from ros
 
     def get_states(self):
         raise NotImplementedError()

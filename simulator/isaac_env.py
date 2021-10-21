@@ -24,9 +24,36 @@ class IsaacEnv(Env):
 	    self.dr_interface = dr._dr.acquire_dr_interface()
 	    self.prefix = "/World/" + self.robot_name
 	    
+	    self.discrete_actions = \
+        [[0.0, -0.9], [0.0, -0.6], [0.0, -0.3], [0.0, 0.05], [0.0, 0.3], [0.0, 0.6], [0.0, 0.9],
+        [0.2, -0.9], [0.2, -0.6], [0.2, -0.3], [0.2, 0], [0.2, 0.3], [0.2, 0.6], [0.2, 0.9],
+        [0.4, -0.9], [0.4, -0.6], [0.4, -0.3], [0.4, 0], [0.4, 0.3], [0.4, 0.6], [0.4, 0.9],
+        [0.6, -0.9], [0.6, -0.6], [0.6, -0.3], [0.6, 0], [0.6, 0.3], [0.6, 0.6], [0.6, 0.9]]
+	    
 	def get_states(self):
-	    pass
-	
+	    states, images_last, min_dists, collisions, scans, vels = self.get_robots_state()
+	    if save_img != None:
+	        cv2.imwrite(save_img + "_robot" + ".png", images_last * 255)
+	    ptr = self.images_ptr[0]
+	    if ptr < self.image_batch:
+	        for j in range(ptr, self.image_batch):
+	            self.images_batch[j] = copy.deepcopy(images_last)
+	    else:
+	        self.images_batch[ptr % self.image_batch] = copy.deepcopy(images_last)
+	    self.images_ptr[0] += 1
+	    images_reshape = np.transpose(self.images_batch, (1, 2, 0))
+	    return (np.array(states), images_reshape, min_dists, collisions, scans, vels)
+	    
+	def get_robots_state(self):
+	    state = self.state_last # from ros sub msg
+	    image = self.image_trans(state.laser_image)
+	    goal_pose = [state.pose.position.x, state.pose.position.y]
+	    min_dist = state.min_dist.point.z
+	    is_collision = state.collision
+	    scan = state.laser
+	    vel = state.vel
+	    return goal_pose, image, min_dist, is_collision, scan, vel
+        
 	def get_rewards(self):
 	    pass
 	
@@ -42,6 +69,8 @@ class IsaacEnv(Env):
 	    robot_prim = stage.GetPrimAtPath(self.prefix)
 	    print("robot_prim is ", robot_prim)
 	    self.test_rob.teleport(robot_prim, (0,0,30), 0)
+	    
+	    return self.get_states()
 	
 	def step_discrete(self, action):
 	    pass
@@ -69,3 +98,6 @@ class IsaacEnv(Env):
 	    print("robot_prim is ", robot_prim)
 	    robot_prim.GetReferences().AddReference("/Library/Robots/config_robot/robot_event_cam.usd")
 	    self.test_rob.spawn(stage, robot_prim, prim_path)
+	
+	def step_discrete(self, action):
+	    pass
