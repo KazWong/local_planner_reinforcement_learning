@@ -1,6 +1,7 @@
 from env import Env
 import numpy as np
 import random
+import math
 import os
 import sys
 import signal
@@ -31,7 +32,9 @@ class IsaacEnv(Env):
         [0.6, -0.9], [0.6, -0.6], [0.6, -0.3], [0.6, 0], [0.6, 0.3], [0.6, 0.6], [0.6, 0.9]]
 	    
 	def get_states(self):
-	    states, images_last, min_dists, collisions, scans, vels = self.get_robots_state()
+	    #states, images_last, min_dists, collisions, scans, vels = self.get_robots_state()
+	    states, images_last, min_dists, collisions, scans, vels = self.get_robots_state_isaac()
+	    return
 	    if save_img != None:
 	        cv2.imwrite(save_img + "_robot" + ".png", images_last * 255)
 	    ptr = self.images_ptr[0]
@@ -53,7 +56,26 @@ class IsaacEnv(Env):
 	    scan = state.laser
 	    vel = state.vel
 	    return goal_pose, image, min_dist, is_collision, scan, vel
-        
+                
+	def get_robots_state_isaac(self):
+	    #state = self.state_last # from ros sub msg
+	    #image = self.image_trans(state.laser_image)
+	    #goal_pose = [state.pose.position.x, state.pose.position.y]
+	    #min_dist = state.min_dist.point.z
+	    #is_collision = self.test_rob.check_overlap_box()
+	    #self.test_rob.check_overlap_box()
+	    #scan = state.laser
+	    #vel = state.vel
+	    # edited
+	    state = None
+	    image = None
+	    goal_pose = None
+	    min_dist = None
+	    is_collision = self.test_rob.check_overlap_box()
+	    scan = self.test_rob.get_lidar_data()
+	    vel = self.test_rob.get_current_vel()
+	    return goal_pose, image, min_dist, is_collision, scan, vel
+	    
 	def get_rewards(self):
 	    pass
 	
@@ -68,10 +90,55 @@ class IsaacEnv(Env):
 	    #print("prim_path is ", prim_path)
 	    robot_prim = stage.GetPrimAtPath(self.prefix)
 	    print("robot_prim is ", robot_prim)
-	    self.test_rob.teleport(robot_prim, (0,0,30), 0)
+	    self.reset_robots(target_dist=target_dist)
+	    print("in reset, initial pose is ", self.init_poses)
+	    print("in reset, target pose is ", self.target_poses)
+	    
+	    self.test_rob.teleport(robot_prim, (self.init_poses[0][0],self.init_poses[0][1],30), self.init_poses[0][2])
 	    
 	    return self.get_states()
 	
+	def reset_robots(self, target_dist=0.0):
+	    self.init_poses = []
+	    self.target_poses = []
+	    
+	    #start
+	    while True:
+	        pose_range = self.envs_cfg['begin_poses'][0]
+	        rand_pose = self.random_pose(pose_range[:2], pose_range[2:4], [-3.14, 3.14])
+	        if self.free_check_robot(rand_pose[0], rand_pose[1], self.init_poses):
+	            self.init_poses.append(rand_pose[:])
+	            break
+	    #goal
+	    while True:
+	        pose_range = self.envs_cfg['target_poses'][0]
+	        rand_pose = self.random_pose(pose_range[:2], pose_range[2:4], [-3.14, 3.14])
+	        if (self.init_poses[0][0] - rand_pose[0]) ** 2 + (self.init_poses[0][1] - rand_pose[1]) ** 2 > target_dist ** 2 and self.free_check_robot(rand_pose[0], rand_pose[1], self.target_poses):
+	            self.target_poses.append(rand_pose[:])
+	            break
+	    #self.publish_goal(self.target_poses)
+	
+	def random_pose(self, x, y, sita):
+	    return [random.uniform(x[0],x[1]), random.uniform(y[0],y[1]), random.uniform(sita[0],sita[1])]
+	    
+	def free_check_robot(self, x, y, robot_poses):
+	    d = self.robot_radius*2
+	    for pose in robot_poses:
+	        test_d = math.sqrt((x-pose[0])*(x-pose[0]) + (y-pose[1])*(y-pose[1]))
+	        if test_d <= d:
+	            return False
+	    return True
+	
+	def free_check_obj(self, target_pose, obj_poses):
+	    for pose in obj_poses:
+	        if pose[-1] == 0.0:
+	            continue
+	        d = target_pose[-1] + pose[-1]
+	        test_d = math.sqrt((target_pose[0]-pose[0])**2 + (target_pose[1]-pose[1])**2)
+	        if test_d <= d:
+	            return False
+	    return True
+        
 	def step_discrete(self, action):
 	    pass
 	

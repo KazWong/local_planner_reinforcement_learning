@@ -98,6 +98,27 @@ class Robot_config:
         print("speed is ",motor_input)
         return motor_input
         
+    def get_lidar_data(self):
+        from omni.isaac.range_sensor import _range_sensor
+        lidarInterface = _range_sensor.acquire_lidar_sensor_interface()
+        
+        depth = lidarInterface.get_depth_data("/World/soap_odom/agv_lidar/Lidar")
+        zenith = lidarInterface.get_zenith_data("/World/soap_odom/agv_lidar/Lidar")
+        azimuth = lidarInterface.get_azimuth_data("/World/soap_odom/agv_lidar/Lidar")
+
+        #print("depth", depth)
+        #print("zenith", zenith)
+        #print("azimuth", azimuth)
+        return 0
+
+    def get_current_vel(self):
+        chassis = self.dc.get_articulation_root_body(self.ar)
+        linear_vel = self.dc.get_rigid_body_linear_velocity(chassis)
+        angular_vel = self.dc.get_rigid_body_angular_velocity(chassis)
+        print("linear vel is ", linear_vel)
+        print("angular vel is ", angular_vel)
+        return 0
+
     def check_overlap_box(self):
         # Defines a cubic region to check overlap with
         import omni.physx
