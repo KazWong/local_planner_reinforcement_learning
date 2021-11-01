@@ -24,7 +24,17 @@ class IsaacEnv(Env):
 	    import omni.isaac.dr as dr
 	    self.dr_interface = dr._dr.acquire_dr_interface()
 	    self.prefix = "/World/" + self.robot_name
-	    
+	    self.pose_differ = []
+	    self.scan = []
+	    self.min_dist = 999
+	    image_width_ = 60
+	    image_height_ = 60
+	    resolution_ = 0.1
+	    width = image_width_ * resolution_;
+	    height = image_height_ * resolution_;
+	    self.max_dis_ = math.sqrt(width * width / 4.0 + height * height / 4.0);
+	    self.angle_increment = 0.4
+	    ###tf_laser_base_ =  tobeedited
 	    self.discrete_actions = \
         [[0.0, -0.9], [0.0, -0.6], [0.0, -0.3], [0.0, 0.05], [0.0, 0.3], [0.0, 0.6], [0.0, 0.9],
         [0.2, -0.9], [0.2, -0.6], [0.2, -0.3], [0.2, 0], [0.2, 0.3], [0.2, 0.6], [0.2, 0.9],
@@ -68,13 +78,15 @@ class IsaacEnv(Env):
 	    #vel = state.vel
 	    # edited
 	    state = None
+	    # TODO draw data from scan to image
 	    image = None
-	    goal_pose = None
-	    min_dist = None
 	    is_collision = self.test_rob.check_overlap_box()
-	    scan = self.test_rob.get_lidar_data()
+	    self.scan = self.test_rob.get_lidar_data()
 	    vel = self.test_rob.get_current_vel()
-	    return goal_pose, image, min_dist, is_collision, scan, vel
+	    goal_pose = self.pose_differ
+	    # TODO fix min_dist
+	    self.min_dist = self.min_dist_cal(self.scan)
+	    return goal_pose, image, self.min_dist, is_collision, self.scan, vel
 	    
 	def get_rewards(self):
 	    pass
@@ -117,9 +129,49 @@ class IsaacEnv(Env):
 	            self.target_poses.append(rand_pose[:])
 	            break
 	    #self.publish_goal(self.target_poses)
-	
+	    self.pose_differ = [self.target_poses[0][0] - self.init_poses[0][0], self.target_poses[0][1] - self.init_poses[0][1]]
+	    
+	    
 	def random_pose(self, x, y, sita):
 	    return [random.uniform(x[0],x[1]), random.uniform(y[0],y[1]), random.uniform(sita[0],sita[1])]
+	
+	def min_dist_cal(self, scan):
+	    #print("scan distance to calculate min dist is ", scan[0][0])
+	    #print("scan angle to calculate min dist is ", scan[1][0])
+	    #print("scan distance to calculate min dist is ", scan[0][-1])
+	    #print("scan angle to calculate min dist is ", scan[1][-1])
+	    #print("scan is ", scan)
+	    d = 0
+	    for i in range(len(scan[0])):
+	        if scan[0][i][0] == 100:
+	            d = self.max_dis_
+	        else:
+	            d = scan[0][i][0]
+	        theta = scan[1][0] + self.angle_increment * i
+	        if theta < scan[1][0] or theta > scan[1][-1]:
+	            continue
+	        x = d * math.cos(theta);
+	        y = d * math.sin(theta);
+	        xy = (x,y,0)
+	        #xy_base = self.tf_laser_base_ * xy
+	        print("xy is ", xy)
+	        #print("xy_base is ", xy_base)
+
+        #tf::Vector3 xy, xy_base;
+        #xy.setValue(x, y, 0);
+        #xy_base = tf_laser_base_ * xy;
+        #double x_base = xy_base.getX();
+        #double y_base = xy_base.getY();
+        
+        #//penalty for min distance
+        #double dist = sqrt(x_base * x_base + y_base * y_base);
+        #if (dist < state_msg.min_dist.point.z)
+        #{
+        #    state_msg.min_dist.point.x = x_base;
+        #    state_msg.min_dist.point.y = y_base;
+        #    state_msg.min_dist.point.z = dist;
+        #}
+	    return 0
 	    
 	def free_check_robot(self, x, y, robot_poses):
 	    d = self.robot_radius*2

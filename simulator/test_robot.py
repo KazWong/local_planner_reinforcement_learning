@@ -106,10 +106,10 @@ class Robot_config:
         zenith = lidarInterface.get_zenith_data("/World/soap_odom/agv_lidar/Lidar")
         azimuth = lidarInterface.get_azimuth_data("/World/soap_odom/agv_lidar/Lidar")
 
-        #print("depth", depth)
+        #print("depth", depth/65535*100)
         #print("zenith", zenith)
         #print("azimuth", azimuth)
-        return 0
+        return [depth/65535*100, azimuth]
 
     def get_current_vel(self):
         chassis = self.dc.get_articulation_root_body(self.ar)
