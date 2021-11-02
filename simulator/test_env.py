@@ -17,42 +17,40 @@ class Env_config:
         for num in range(cube_num):
             # create first cube
             result, path = self.omni.kit.commands.execute("CreateMeshPrimCommand", prim_type="Cube")
-            if num == 0:
-                object_list.append("/World/Cube")
-                continue
-            if num < 10:
-                object_list.append("/World/Cube_0"+str(num))
-            else:
-                object_list.append("/World/Cube_"+str(num))
+            self.omni.kit.commands.execute('MovePrimsCommand', paths_to_move={'/World/Cube': '/World/mbox'+str(num+1)},
+	on_move_fn=None)
+            object_list.append('/World/mbox'+str(num+1))
             
         # create cylinder
         for num in range(cylinder_num):
             # create first cylinder
             result, path = self.omni.kit.commands.execute("CreateMeshPrimCommand", prim_type="Cylinder")
-            if num == 0:
-                object_list.append("/World/Cylinder")
-                continue
-            if num < 10:
-                object_list.append("/World/Cylinder_0"+str(num))
-            else:
-                object_list.append("/World/Cylinder_"+str(num))
+            self.omni.kit.commands.execute('MovePrimsCommand', paths_to_move={'/World/Cylinder': '/World/cylinder'+str(num)},
+	on_move_fn=None)
+            object_list.append('/World/cylinder'+str(num))
     
         # create sphere
-        for num in range(sphere_num):
+        #for num in range(sphere_num):
             # create first sphere
-            result, path = self.omni.kit.commands.execute("CreateMeshPrimCommand", prim_type="Sphere")
-            if num == 0:
-                object_list.append("/World/Sphere")
-                continue
-            if num < 10:
-                object_list.append("/World/Sphere_0"+str(num))
-            else:
-                object_list.append("/World/Sphere_"+str(num))
-    
+        #    result, path = self.omni.kit.commands.execute("CreateMeshPrimCommand", prim_type="Sphere")
+        #    if num == 0:
+        #        object_list.append("/World/Sphere")
+        #        continue
+        #    if num < 10:
+        #        object_list.append("/World/Sphere_0"+str(num))
+        #    else:
+        #        object_list.append("/World/Sphere_"+str(num))
+        print(object_list)
         for mesh in object_list:
             translation = np.random.rand(3) * TRANSLATION_RANGE
             translation[2] = 40.0
+            print(translation)
+            print(translation.tolist())
+            print(mesh)
+            print(stage)
             cube_prim = stage.GetPrimAtPath(mesh)
+            print(cube_prim)
+            print("-"*50)
             UsdGeom.XformCommonAPI(cube_prim).SetTranslate(translation.tolist())
             #UsdGeom.XformCommonAPI(cube_prim).SetRotate((0.0, 0.0, 0.0))
             #UsdGeom.XformCommonAPI(cube_prim).SetScale((30.0, 30.0, 30.0))
@@ -100,15 +98,15 @@ class Env_config:
         #    seed=12345)
             
         # domain randomization on scale
-        result, prim = self.omni.kit.commands.execute(
-            'CreateScaleComponentCommand',
-            path='/World/scale_component',
-            prim_paths=target_list,
-            min_range=(0.5, 0.5, 1),
-            max_range=(2.0, 2.0, 1),
-            uniform_scaling=False,
-            duration=1,
-            include_children=False,
-            seed=12345)
+        #result, prim = self.omni.kit.commands.execute(
+        #    'CreateScaleComponentCommand',
+        #    path='/World/scale_component',
+        #    prim_paths=target_list,
+        #    min_range=(0.5, 0.5, 1),
+        #    max_range=(2.0, 2.0, 1),
+        #    uniform_scaling=False,
+        #    duration=1,
+        #    include_children=False,
+        #    seed=12345)
             
         dr_interface.toggle_manual_mode()

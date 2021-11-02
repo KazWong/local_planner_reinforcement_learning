@@ -1,30 +1,35 @@
 import numpy as np
 
 class Robot_config:
-    def __init__(self, stage, omni, robot_prim):
-        self.usd_path = "omniverse://localhost/Library/Robots/config_robot/robot_event_cam.usd"
+    def __init__(self, stage, omni):
         self.omni = omni
         from omni.isaac.dynamic_control import _dynamic_control
         self.dc = _dynamic_control.acquire_dynamic_control_interface()
         self.omni = omni
-        self.robot_prim = robot_prim
         self.ar = None
         self.stage = stage
 
-    def spawn(self, prim_path):
+    def spawn(self, stage, robot_prim, prim_path):
         from pxr import UsdGeom, Gf, UsdPhysics
         TRANSLATION_RANGE = 1000.0
         translation = np.random.rand(3) * TRANSLATION_RANGE
         angle = np.random.rand(1)
-        xform = UsdGeom.Xformable(self.robot_prim)
+        print("X" * 10)
+        print(robot_prim)
+        xform = UsdGeom.Xformable(robot_prim)
+        print(xform)
+        print("stage is ", stage)
+        print("prim path is ", prim_path)
+        print("X"* 10)
         xform_op = xform.AddXformOp(UsdGeom.XformOp.TypeTransform, UsdGeom.XformOp.PrecisionDouble, "")
         mat = Gf.Matrix4d().SetTranslate(translation.tolist())
         mat.SetRotateOnly(Gf.Rotation(Gf.Vec3d(0, 0, 1), (angle[0])))
         xform_op.Set(mat)
         DRIVE_STIFFNESS = 10000.0
         # Set joint drive parameters
-        wheel_back_left_joint = UsdPhysics.DriveAPI.Apply(self.stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_back_left_joint"), "angular")
+        wheel_back_left_joint = UsdPhysics.DriveAPI.Apply(stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_back_left_joint"), "angular")
         wheel_back_left_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
+<<<<<<< HEAD
 
         wheel_back_right_joint = UsdPhysics.DriveAPI.Apply(self.stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_back_right_joint"), "angular")
         wheel_back_right_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
@@ -36,12 +41,25 @@ class Robot_config:
         wheel_front_right_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
 
     def teleport(self, location, rotation, settle=False):
+=======
+        
+        wheel_back_right_joint = UsdPhysics.DriveAPI.Apply(stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_back_right_joint"), "angular")
+        wheel_back_right_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
+        
+        wheel_front_left_joint = UsdPhysics.DriveAPI.Apply(stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_front_left_joint"), "angular")
+        wheel_front_left_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
+        
+        wheel_front_right_joint = UsdPhysics.DriveAPI.Apply(stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_front_right_joint"), "angular")
+        wheel_front_right_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
+	
+    def teleport(self, robot_prim, location, rotation, settle=False):
+>>>>>>> 1bc7e4bf6e570195d4f773be4155b2c9d595491a
         from pxr import Gf
         from omni.isaac.dynamic_control import _dynamic_control
         print("before teleport", self.ar)
         #if self.ar is None:
-        print(type(self.robot_prim.GetPath().pathString), self.robot_prim.GetPath().pathString)
-        self.ar = self.dc.get_articulation(self.robot_prim.GetPath().pathString)
+        print(type(robot_prim.GetPath().pathString), robot_prim.GetPath().pathString)
+        self.ar = self.dc.get_articulation(robot_prim.GetPath().pathString)
         print("after teleport", self.ar)
         chassis = self.dc.get_articulation_root_body(self.ar)
 
@@ -55,7 +73,7 @@ class Robot_config:
         self.dc.set_rigid_body_pose(chassis, tf)
         self.dc.set_rigid_body_linear_velocity(chassis, [0, 0, 0])
         self.dc.set_rigid_body_angular_velocity(chassis, [0, 0, 0])
-        self.command((-20, 20, -20, 20))
+        #self.command((-20, 20, -20, 20))
         # Settle the robot onto the ground
         if settle:
             frame = 0
