@@ -55,7 +55,7 @@ def train(RL):
         ep_return = 0.0
         for step in range(steps_per_epoch):
             #choose action from eval net
-            #continue
+            continue
             action = RL.choose_action([observation[0], observation[1]], env.discrete_actions, is_test=False)
             '''
             #choose action from dwa

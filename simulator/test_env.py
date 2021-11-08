@@ -7,7 +7,7 @@ class Env_config:
         self.omni = omni
         
     def create_objects(self, cube_num, cylinder_num, sphere_num):
-        from pxr import UsdGeom, Gf, PhysxSchema, UsdPhysics, Sdf, PhysicsSchemaTools
+        from pxr import UsdGeom
         from omni.physx.scripts import utils
         TRANSLATION_RANGE = 500.0
         object_list = []
