@@ -249,9 +249,10 @@ class IsaacEnv(Env):
 	    return (v_4, v_3, v_1, v_2)
 
 	def env_init(self):
-	    from omni.isaac.utils.scripts.nucleus_utils import find_nucleus_server
-	    result, nucleus = find_nucleus_server()
-	    env_path = nucleus + "/Library/Environments/test_env.usd"
+	    #from omni.isaac.utils.scripts.nucleus_utils import find_nucleus_server
+	    #result, nucleus = find_nucleus_server()
+	    env_path = "omniverse://nucleus-01.lscm.ml/Library/Environments/test_env.usd"
+	    #env_path = nucleus + "/Library/Environments/test_env.usd"
 	    print(env_path)
 	    self.omni.usd.get_context().open_stage(env_path, None)
 	    obj_list = self.test_env.create_objects(3,3,0)

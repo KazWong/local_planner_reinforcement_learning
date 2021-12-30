@@ -23,7 +23,8 @@ is_restore_model = False
 
 MEMORY_SIZE = 50000    #sumtree size
 #BATCH_SIZE = 102400
-BATCH_SIZE = 10240
+#BATCH_SIZE = 10240
+BATCH_SIZE = 1024
 EXP_NAME = 'rl_lscm'
 Learning_rate = 0.0005
 E_greedy_increment = 0.00005    #random or network update, e-greedy algo
@@ -43,8 +44,8 @@ def train(RL):
     total_steps = 0
     epochs = 1000000
     steps_per_epoch = 1500
-    #episode_max_len = 300
-    episode_max_len = 3000
+    episode_max_len = 300
+    #episode_max_len = 3000
     env.env_init()
     env.robot_init()
     counter = 0
@@ -59,8 +60,10 @@ def train(RL):
         ep_len = 0.0
         #reward accumulation
         ep_return = 0.0
+        step_counter = 0
         for step in range(steps_per_epoch):
             print("counter is ", counter)
+            print("step counter is ", step_counter)
             #choose action from eval net
             #continue
             if counter < 10:
@@ -97,6 +100,12 @@ def train(RL):
                     ep_return = 0.0
                     print("perform reset after step")
                     observation = env.reset(target_dist,counter)
+                step_counter +=1
+        print("finished one epoch!!!!!!!!!!!!!!!")
+        print("finished one epoch!!!!!!!!!!!!!!!")
+        print("finished one epoch!!!!!!!!!!!!!!!")
+        print("finished one epoch!!!!!!!!!!!!!!!")
+        print("finished one epoch!!!!!!!!!!!!!!!")
         #TODO: save ep_len, ep_return and loss
         #if total_steps > BATCH_SIZE:
         #    RL.logger.log_tabular('epoch', epoch)
