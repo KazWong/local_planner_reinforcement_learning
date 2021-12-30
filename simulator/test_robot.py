@@ -1,14 +1,17 @@
 import numpy as np
+import math
 
 class Robot_config:
     def __init__(self, stage, omni):
+        from pxr import UsdGeom
         self.omni = omni
         from omni.isaac.dynamic_control import _dynamic_control
         self.dc = _dynamic_control.acquire_dynamic_control_interface()
         self.omni = omni
         self.ar = None
         self.stage = stage
-
+        self.meters_per_unit = UsdGeom.GetStageMetersPerUnit(self.omni.usd.get_context().get_stage())
+        
     def spawn(self, stage, robot_prim, prim_path):
         from pxr import UsdGeom, Gf, UsdPhysics
         TRANSLATION_RANGE = 1000.0
@@ -26,6 +29,7 @@ class Robot_config:
         mat.SetRotateOnly(Gf.Rotation(Gf.Vec3d(0, 0, 1), (angle[0])))
         xform_op.Set(mat)
         DRIVE_STIFFNESS = 10000.0
+        #DRIVE_STIFFNESS = 0      
         # Set joint drive parameters
         wheel_back_left_joint = UsdPhysics.DriveAPI.Apply(stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_back_left_joint"), "angular")
         wheel_back_left_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
@@ -92,10 +96,24 @@ class Robot_config:
         self.dc.set_dof_velocity_target(wheel_back_right, np.clip(wheel_back_right_speed, -10, 10))      
         self.dc.set_dof_velocity_target(wheel_front_left, np.clip(wheel_front_left_speed, -10, 10))
         self.dc.set_dof_velocity_target(wheel_front_right, np.clip(wheel_front_right_speed, -10, 10))
-    
+
+    def commands(self,action, angle):
+        print("linear speed is", action[0]/self.meters_per_unit)
+        print("angular speed is", action[1]/self.meters_per_unit)
+        chassis = self.dc.get_articulation_root_body(self.ar)
+        self.dc.wake_up_articulation(self.ar)
+        print("radian is ", angle)
+        print("degree is ", angle * 180 / math.pi)
+        print("x speed is ", action[0] / self.meters_per_unit * math.cos(angle * 180 / math.pi))
+        print("y speed is ", -action[0] / self.meters_per_unit * math.sin(angle * 180 / math.pi))
+        self.dc.set_rigid_body_linear_velocity(chassis, [action[0] / self.meters_per_unit * math.cos(angle * 180 / math.pi), -action[0] / self.meters_per_unit * math.sin(angle * 180 / math.pi), 0])
+        #self.dc.set_rigid_body_angular_velocity(chassis, [0, 0, action[1]])
+        #self.dc.set_rigid_body_linear_velocity(chassis, [100, -100, 0])
+        #self.dc.set_rigid_body_angular_velocity(chassis, [0, 0, -10])
+
     # idealized motor model
     def wheel_speed_from_motor_value(self, motor_input):
-        print("speed is ",motor_input)
+        #print("speed is ",motor_input)
         return motor_input
         
     def get_lidar_data(self):
@@ -117,7 +135,7 @@ class Robot_config:
         angular_vel = self.dc.get_rigid_body_angular_velocity(chassis)
         print("linear vel is ", linear_vel)
         print("angular vel is ", angular_vel)
-        return 0
+        return linear_vel, angular_vel
 
     def check_overlap_box(self):
         # Defines a cubic region to check overlap with

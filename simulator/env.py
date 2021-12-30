@@ -59,7 +59,7 @@ class Env(object):
         image = cv2.resize(cv_image, self.image_size) / 255.0
         return image
 
-    def robot_control(self, action):
+    def robot_control_original(self, action):
         vel = Twist()
 
         if self.done == 0:
