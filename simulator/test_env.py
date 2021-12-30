@@ -2,7 +2,6 @@ import numpy as np
 
 class Env_config:
     def __init__(self, omni, kit):
-        self.usd_path = "omniverse://localhost/Library/Robots/config_robot/robot_event_cam.usd"
         self.kit = kit
         self.omni = omni
         
