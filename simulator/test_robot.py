@@ -72,10 +72,10 @@ class Robot_config:
 
     def IK(self, cmd_vel):
         v = [0, 0, 0, 0]
-		v[0] = - cmd_vel[0] + cmd_vel[1] + (lx_ly)*cmd_vel[2];
-		v[1] =   cmd_vel[0] + cmd_vel[1] + (lx_ly)*cmd_vel[2];
-		v[2] = - cmd_vel[0] - cmd_vel[1] + (lx_ly)*cmd_vel[2];
-		v[3] =   cmd_vel[0] - cmd_vel[1] + (lx_ly)*cmd_vel[2];
+        v[0] = - cmd_vel[0] + cmd_vel[1] + (lx_ly)*cmd_vel[2];
+        v[1] =   cmd_vel[0] + cmd_vel[1] + (lx_ly)*cmd_vel[2];
+        v[2] = - cmd_vel[0] - cmd_vel[1] + (lx_ly)*cmd_vel[2];
+        v[3] =   cmd_vel[0] - cmd_vel[1] + (lx_ly)*cmd_vel[2];
         return v
 
     def FK(self, feedback):
