@@ -1,7 +1,7 @@
 <launch>
   <arg name="use_sim_time" default="true"/>
   <param name="/use_sim_time" value="$(arg use_sim_time)"/>
-  <node name="lscm_base_laser_tf" pkg="tf" type="static_transform_publisher" args="0 0 0.5 0 0 0 lscm/base_link lscm/laser_link 50"/>
+  <node name="lscm_base_laser_tf" pkg="tf" type="static_transform_publisher" args="0 0 0.5 0 0 0 agv_lidar lscm/laser_link 50"/>
   <include file="$(find scan_img)/launch/nodes.launch" >
     <arg name="image_width" value="100" />
     <arg name="image_height" value="100" />

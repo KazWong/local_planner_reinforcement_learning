@@ -6,7 +6,7 @@ models_pose: [[-3, 3, -3, 3], [-3, 3, -3, 3], [-3, 3, -3, 3], [-3, 3, -3, 3], [-
 
 robot_total: 1
 robot_radius: 0.5
-robot_model_name: soap_odom
+robot_model_name: lscm
 begin_poses: [[-3, 3, -3, 3]]
 target_poses: [[-3, 3, -3, 3]]
 
