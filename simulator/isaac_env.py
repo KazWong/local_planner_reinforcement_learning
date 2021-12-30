@@ -16,7 +16,7 @@ import cv2
 class IsaacEnv(Env):
 	def __init__(self, cfg_names):
 	    super().__init__(cfg_names)
-	    self.startup_config = {"renderer": "RayTracedLighting", "headless": False, "experience": '/home/slam/.local/share/ov/pkg/isaac_sim-2021.1.1/apps/omni.isaac.sim.python.kit'}
+	    self.startup_config = {"renderer": "RayTracedLighting", "headless": False, "experience": f'{os.environ["EXP_PATH"]}/omni.isaac.sim.python.kit'}
 	    self.kit = OmniKitHelper(self.startup_config)
 	    import omni
 	    from pxr import UsdGeom
@@ -66,7 +66,7 @@ class IsaacEnv(Env):
 	        self.images_ptr[0] += 1
 	        images_reshape = np.transpose(self.images_batch, (1, 2, 0))
 	        return (np.array(states), images_reshape, min_dists, collisions, scans, vels)
-	    
+
 	def get_robots_state(self):
 	    state = self.state_last
 	    image = self.image_trans(state.laser_image)
@@ -76,7 +76,7 @@ class IsaacEnv(Env):
 	    scan = state.laser
 	    vel = state.vel
 	    return goal_pose, image, min_dist, is_collision, scan, vel
-                    
+
 	def get_rewards(self, state, min_dist, is_collision):
 	    #print("state is", state)
 	    distance_reward_factor = 200
@@ -113,11 +113,11 @@ class IsaacEnv(Env):
 	    reward = collision_reward + reach_reward + step_reward + distance_reward
 	    print("reward is: ", reward)
 	    print("done is: ", done)
-	    
+
 	    if done < 0 and self.done == 0:
 	        self.done = done
 	    return (reward, done)
-	
+
 	def reset(self, target_dist, counter):
 	    # random env
 	    print("RANDOM ENVIRONMENT!!!!!!!!!!!!!!!!!!!!!!!!!!")
@@ -135,7 +135,7 @@ class IsaacEnv(Env):
 	    self.reset_robots(target_dist=target_dist)
 	    print("in reset, initial pose is ", self.init_poses)
 	    print("in reset, target pose is ", self.target_poses)
-	    
+
 	    self.test_rob.teleport(robot_prim, (self.init_poses[0][0],self.init_poses[0][1],-10), self.init_poses[0][2])
 	    #self.robot_control([0, 0])
 	    self.kit.update(1 / 60.0)
@@ -146,7 +146,7 @@ class IsaacEnv(Env):
 	    self.reset_count += 1
 	    self.step_count = 0
 	    return self.get_states(counter)
-	
+
 	def reset_robots(self, target_dist=0.0):
 	    self.init_poses = []
 	    self.target_poses = []
@@ -170,15 +170,15 @@ class IsaacEnv(Env):
 	    self.target_poses = [[element / self.meters_per_unit for element in self.target_poses[0]]]
 	    #self.init_poses = [[self.init_poses[0][0] / self.meters_per_unit, self.init_poses[0][1] / self.meters_per_unit, self.init_poses[0][2]]]
 	    #self.target_poses = [[self.target_poses[0][0] / self.meters_per_unit, self.target_poses[0][1] / self.meters_per_unit, self.target_poses[0][2]]]
-	    
+
 	    #print("init poses in omniverse are: ", self.init_poses)
 	    #print("target poses in omniverse are: ", self.target_poses)
 	    self.publish_goal(self.target_poses)
-	    
+
 	def random_pose(self, x, y, sita):
 	    return [random.uniform(x[0],x[1]), random.uniform(y[0],y[1]), random.uniform(sita[0],sita[1])]
-	
-	    
+
+
 	def free_check_robot(self, x, y, robot_poses):
 	    d = self.robot_radius*2
 	    for pose in robot_poses:
@@ -186,7 +186,7 @@ class IsaacEnv(Env):
 	        if test_d <= d:
 	            return False
 	    return True
-	
+
 	def free_check_obj(self, target_pose, obj_poses):
 	    for pose in obj_poses:
 	        if pose[-1] == 0.0:
@@ -198,7 +198,7 @@ class IsaacEnv(Env):
 	    return True
 	def step_discrete(self, action, counter):
 	    return self.step(self.discrete_actions[action], counter)
-	
+
 	def step(self, action, counter):
 	    print("-"*50)
 	    print("action in step is ", action)
@@ -213,11 +213,12 @@ class IsaacEnv(Env):
 	        return False, False, False
 	    else:
 	        return states, np.array(rw[0], dtype='float64'), np.array(rw[1])
-            
+
 	def robot_control(self, action):
 	    # wheel_back_left, wheel_back_right, wheel_front_left, wheel_front_right
 	    self.converted_cmd = self.convert_speed(action)
-	    self.test_rob.command(self.converted_cmd)
+	    #self.test_rob.command(self.converted_cmd)
+	    self.test_rob.command(action)
 	    #self.test_rob.command((-20, 20, -20, 20))
 	    #self.test_rob.commands(action, self.init_poses[0][2])
 	    self.kit.update(1 / 60.0)
@@ -244,9 +245,9 @@ class IsaacEnv(Env):
 	    #print("back right speed ", v_3)
 	    #print("front left speed ", v_1)
 	    #print("front right speed ", v_2)
-	    
+
 	    return (v_4, v_3, v_1, v_2)
-        
+
 	def env_init(self):
 	    from omni.isaac.utils.scripts.nucleus_utils import find_nucleus_server
 	    result, nucleus = find_nucleus_server()
@@ -256,7 +257,7 @@ class IsaacEnv(Env):
 	    obj_list = self.test_env.create_objects(3,3,0)
 	    print(obj_list)
 	    self.test_env.domain_randomization_test(obj_list)
-	    
+
 	def robot_init(self):
 	    stage = self.kit.get_stage()
 	    print("stage is ", stage)
@@ -268,7 +269,7 @@ class IsaacEnv(Env):
 	    self.test_rob.spawn(stage, robot_prim, prim_path)
 	    ext_manager = self.omni.kit.app.get_app().get_extension_manager()
 	    ext_manager.set_extension_enabled_immediate("omni.isaac.ros_bridge", True)
-	
+
 	def init_datas(self):
 	    self.last_d = -1
 	    self.last_d_obs = -1

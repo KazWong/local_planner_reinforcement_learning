@@ -11,6 +11,7 @@ class Robot_config:
         self.ar = None
         self.stage = stage
         self.meters_per_unit = UsdGeom.GetStageMetersPerUnit(self.omni.usd.get_context().get_stage())
+        self.lx_ly = 0.43
 
     def spawn(self, stage, robot_prim, prim_path):
         from pxr import UsdGeom, Gf, UsdPhysics
@@ -76,20 +77,24 @@ class Robot_config:
 
     def IK(self, cmd_vel):
         v = [0, 0, 0, 0]
-        v[0] = - cmd_vel[0] + cmd_vel[1] + (lx_ly)*cmd_vel[2];
-        v[1] =   cmd_vel[0] + cmd_vel[1] + (lx_ly)*cmd_vel[2];
-        v[2] = - cmd_vel[0] - cmd_vel[1] + (lx_ly)*cmd_vel[2];
-        v[3] =   cmd_vel[0] - cmd_vel[1] + (lx_ly)*cmd_vel[2];
+        v[0] = - cmd_vel[0] + cmd_vel[1] + (self.lx_ly)*cmd_vel[2];
+        v[1] =   cmd_vel[0] + cmd_vel[1] + (self.lx_ly)*cmd_vel[2];
+        v[2] = - cmd_vel[0] - cmd_vel[1] + (self.lx_ly)*cmd_vel[2];
+        v[3] =   cmd_vel[0] - cmd_vel[1] + (self.lx_ly)*cmd_vel[2];
         return v
 
     def FK(self, feedback):
         odom = [0, 0, 0]
         odom[0] = (-feedback[0] + feedback[1] - feedback[2] + feedback[3]) / 4.
         odom[1] = ( feedback[0] + feedback[1] - feedback[2] - feedback[3]) / 4.
-        odom[2] = ( feedback[0] + feedback[1] + feedback[2] + feedback[3]) / (lx_ly*4.)
+        odom[2] = ( feedback[0] + feedback[1] + feedback[2] + feedback[3]) / (self.lx_ly*4.)
         return odom
 
-    def command(self, cmd_vel):
+    def command(self, action):
+        print("linear speed is ", action[0], " ", action[0]/self.meters_per_unit)
+        print("angular speed is ", action[1])
+        #cmd_vel = [action[0]/self.meters_per_unit, 0.0, action[1]]
+        cmd_vel = [0.5/self.meters_per_unit, 0.0, 0.0]
         chassis = self.dc.get_articulation_root_body(self.ar)
         #num_joints = self.dc.get_articulation_joint_count(self.ar)
         #num_dofs = self.dc.get_articulation_dof_count(self.ar)
@@ -102,7 +107,7 @@ class Robot_config:
 
         self.dc.wake_up_articulation(self.ar)
 
-        motor_value = IK(cmd_vel)
+        motor_value = self.IK(cmd_vel)
         wheel_back_left_speed = self.wheel_speed_from_motor_value(motor_value[0])
         wheel_back_right_speed = self.wheel_speed_from_motor_value(motor_value[1])
         wheel_front_left_speed = self.wheel_speed_from_motor_value(motor_value[2])
@@ -149,7 +154,8 @@ class Robot_config:
         chassis = self.dc.get_articulation_root_body(self.ar)
         linear_vel = self.dc.get_rigid_body_linear_velocity(chassis)
         angular_vel = self.dc.get_rigid_body_angular_velocity(chassis)
-        print("linear vel is ", linear_vel)
+        #linear_vel = (linear_vel[0]*self.meters_per_unit, linear_vel[1]*self.meters_per_unit, linear_vel[2]*self.meters_per_unit)
+        print("linear vel is ", (linear_vel[0]*self.meters_per_unit, linear_vel[1]*self.meters_per_unit, linear_vel[2]*self.meters_per_unit))
         print("angular vel is ", angular_vel)
         return linear_vel, angular_vel
 
