@@ -222,16 +222,9 @@ class IsaacEnv(Env):
 	    #self.test_rob.command((-20, 20, -20, 20))
 	    #self.test_rob.commands(action, self.init_poses[0][2])
 	    self.kit.update(1 / 60.0)
-	    vel = Twist()
 	    print("done is ",self.done)
-	    if self.done == 0:
-	        vel.linear.x = action[0]/self.meters_per_unit
-	        vel.angular.z = action[1]
-	    else:
-	        vel.linear.x = 0
-	        vel.angular.z = 0
-	    #print(vel)
-	    self.vel_pub.publish(vel)
+	    super().robot_control(action)
+
 	def convert_speed(self, action):
 	    v_1 = v_2 = v_3 = v_4 = 0
 	    robot_length = 0.73
