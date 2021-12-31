@@ -168,10 +168,21 @@ class DQNPrioritizedReplay:
         config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
         self.sess = tf.Session(config=config)
 
+        #1. for basic training or testing
         if self.restore_model == False:
             self.sess.run(tf.global_variables_initializer())
         else:
             self.logger.restore_model(self.sess)
+
+        '''
+        #2. for transfer learning
+        self.sess.run(tf.global_variables_initializer())
+        variables = tf.contrib.framework.get_variables_to_restore()
+        variables_to_restore = [v for v in variables if v.name.split('/')[1]!='fc']
+        variables_to_restore = [v for v in variables_to_restore if v.name.split('/')[2]!='fc']
+        print('var_list: ',variables_to_restore)
+        self.logger.restore_weight(self.sess, variables_to_restore)
+        '''
 
         #save pbtxt
         self.logger.save_model_info(self.sess)
@@ -327,6 +338,213 @@ class DQNPrioritizedReplay:
         self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
         self.learn_step_counter += 1
         return abs_errors, self.cost
+
+    def save_train_model(self):
+        self.logger.save_train_model(self.sess)
+
+
+class DDPG:
+    def __init__(
+            self,
+            action_dim = 2,
+            dir_dim = 2,
+            image_size=[64, 64, 3],
+            learning_rate_a=0.001,    #actor learning rate
+            learning_rate_c=0.002,    #critic learning rate
+            tau = 0.01,         #update parameter for two model
+            gamma = 0.9,        #decay factor for the reward
+            memory_size=10000,
+            batch_size=32,
+            e_greedy_increment=0.00005,
+            output_graph=False,
+            restore_model=False,
+            exp_name = None
+    ):
+
+        logger_kwargs = setup_logger_kwargs(exp_name)
+        self.logger = EpochLogger(**logger_kwargs)
+        self.image_size = image_size
+        self.n_features = self.image_size[0] * self.image_size[1] * self.image_size[2]
+        self.memory_size = memory_size
+        self.memory = np.zeros((self.memory_size, (self.n_features + dir_dim) * 2 + action_dim + 1), dtype=np.float32)
+        self.action_dim = action_dim
+        self.dir_dim = dir_dim
+        self.memory_counter = 0
+
+        self.lr_a = learning_rate_a
+        self.lr_c = learning_rate_c
+        self.gamma = gamma
+        self.tau = tau
+
+        self.epsilon_increment = e_greedy_increment
+        self.epsilon = 0 if e_greedy_increment is not None else 0.9
+
+        self.dir = tf.placeholder(tf.float32, [None, self.dir_dim], name='dir')
+        self.image = tf.placeholder(tf.float32, [None, self.image_size[0], self.image_size[1], self.image_size[2]], name='image')
+        self.dir_ = tf.placeholder(tf.float32, [None, self.dir_dim], name='dir_')
+        self.image_ = tf.placeholder(tf.float32, [None, self.image_size[0], self.image_size[1], self.image_size[2]], name='image_')
+        self.R = tf.placeholder(tf.float32, [None, 1], name='r')
+
+        #self.a is actor_network.network
+        self.a = self.build_a(self.dir, self.image)
+        self.q = self.build_c(self.dir, self.image, self.a)
+        self.a_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='Actor')
+        self.c_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='Critic')
+        self.ema = tf.train.ExponentialMovingAverage(decay=1 - self.tau)
+        
+        target_update = [self.ema.apply(self.a_params), self.ema.apply(self.c_params)]
+        #self.a_ is actor_network.target_network
+        self.a_ = self.build_a(self.dir_, self.image_, reuse=True, custom_getter=self.ema_getter)
+        self.q_ = self.build_c(self.dir_, self.image_, self.a_, reuse=True, custom_getter=self.ema_getter)
+
+        #TODO:
+        self.a_loss = - tf.reduce_mean(self.q)
+        self.atrain = tf.train.AdamOptimizer(self.lr_a).minimize(self.a_loss, var_list=self.a_params)
+        
+        with tf.control_dependencies(target_update):
+            self.q_target = self.R + self.gamma * self.q_
+            self.td_error = tf.losses.mean_squared_error(labels=self.q_target, predictions=self.q)
+            self.ctrain = tf.train.AdamOptimizer(self.lr_c).minimize(self.td_error, var_list=self.c_params)
+        
+        self.batch_size = batch_size
+        self.restore_model = restore_model
+        
+        config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
+        self.sess = tf.Session(config=config)
+        
+        if self.restore_model == False:
+            self.sess.run(tf.global_variables_initializer())
+        else:
+            self.logger.restore_model(self.sess)
+
+        self.logger.save_model_info(self.sess)
+        if output_graph:
+            tf.summary.FileWriter("logs/", self.sess.graph)
+
+    def ema_getter(self, getter, name, *args, **kwargs):
+        return self.ema.average(getter(name, *args, **kwargs))
+
+    def save_param(self):
+        train_param = {}
+        train_param['batch_size'] = self.batch_size
+        train_param['memory_size'] = self.memory_size
+        train_param['Learning_rate_a'] = self.lr_a
+        train_param['Learning_rate_c'] = self.lr_c
+        train_param['image_size'] = self.image_size
+        self.logger.save_config(train_param)
+
+    def build_a(self, direction, image, reuse=None, custom_getter=None):
+        trainable = True if reuse is None else False
+        with tf.variable_scope('Actor', reuse=reuse, custom_getter=custom_getter):
+            with tf.variable_scope("image"):
+                image_net = slim.conv2d(image, 32, [8, 8], stride=4, scope='conv1', trainable=trainable)
+                image_net = slim.conv2d(image_net, 64, [4, 4], stride=2, scope='conv2', trainable=trainable)
+                image_net = slim.conv2d(image_net, 64, [3, 3], stride=1, scope='conv3', trainable=trainable)
+            with tf.variable_scope("direction"):
+                dir_net = tf.layers.dense(direction, 64, activation=tf.nn.relu, trainable=trainable)
+                dir_net = tf.reshape(dir_net, [-1,1,1,64])
+                dir_net = tf.tile(dir_net, [1,8,8,1])
+            with tf.variable_scope("connect"):
+                net = tf.math.add(image_net, dir_net)
+            with tf.variable_scope("convs"):
+                net = slim.conv2d(net, 64, [3, 3], stride=1, scope='conv1', trainable=trainable)
+                net = slim.conv2d(net, 64, [3, 3], stride=1, scope='conv2', trainable=trainable)
+                net = slim.conv2d(net, 64, [3, 3], stride=1, scope='conv3', trainable=trainable)
+                net = slim.flatten(net, scope='flatten')
+            with tf.variable_scope("fc"):
+                net = tf.layers.dense(net, units=512, activation=tf.nn.relu, trainable=trainable)
+                out = tf.layers.dense(net, units=512, activation=tf.nn.relu, trainable=trainable)
+                out = tf.layers.dense(out, 2, activation=None, trainable=trainable)
+            with tf.variable_scope("activate"):
+                action_unpacked = tf.unstack(out, axis=1)
+                action_bounded = []
+                action_bounded.append(tf.sigmoid(action_unpacked[0]))
+                action_bounded.append(tf.tanh(action_unpacked[1]))
+                action_outputs = tf.stack(action_bounded, axis=1)
+            return action_outputs
+
+    def build_c(self, direction, image, action, reuse=None, custom_getter=None):
+        trainable = True if reuse is None else False
+        with tf.variable_scope('Critic', reuse=reuse, custom_getter=custom_getter):
+            with tf.variable_scope("image"):
+                image_net = slim.conv2d(image, 32, [8, 8], stride=4, scope='conv1', trainable=trainable)
+                image_net = slim.conv2d(image_net, 64, [4, 4], stride=2, scope='conv2', trainable=trainable)
+                image_net = slim.conv2d(image_net, 64, [3, 3], stride=1, scope='conv3', trainable=trainable)
+            with tf.variable_scope("direction"):
+                dir_net = tf.layers.dense(direction, 64, activation=tf.nn.relu, trainable=trainable)
+                dir_net = tf.reshape(dir_net, [-1,1,1,64])
+                dir_net = tf.tile(dir_net, [1,8,8,1])
+            with tf.variable_scope("action"):
+                action_net = tf.layers.dense(action, 64, activation=tf.nn.relu, trainable=trainable)
+                action_net = tf.reshape(action_net, [-1,1,1,64])
+                action_net = tf.tile(action_net, [1,8,8,1])
+            with tf.variable_scope("connect"):
+                net = tf.math.add(image_net, dir_net)
+                net = tf.math.add(net, action_net)
+            with tf.variable_scope("convs"):
+                net = slim.conv2d(net, 64, [3, 3], stride=1, scope='conv1', trainable=trainable)
+                net = slim.conv2d(net, 64, [3, 3], stride=1, scope='conv2', trainable=trainable)
+                net = slim.conv2d(net, 64, [3, 3], stride=1, scope='conv3', trainable=trainable)
+                net = slim.flatten(net, scope='flatten')
+            with tf.variable_scope("fc"):
+                net = tf.layers.dense(net, units=512, activation=tf.nn.relu, trainable=trainable)
+                out = tf.layers.dense(net, units=512, activation=tf.nn.relu, trainable=trainable)
+                out = tf.layers.dense(out, units=1, activation=None, trainable=trainable)
+            return out
+
+    def store_transition(self, s, a, r, s_):
+        transition = np.hstack((s[0], s[1].flatten(), a, r, s_[0], s_[1].flatten()))
+        index = self.memory_counter % self.memory_size
+        self.memory[index, :] = transition
+        self.memory_counter += 1
+
+    def choose_action(self, observation, is_test=False):
+        image_input = observation[1]
+        dir_input = observation[0]
+        image_input = image_input[np.newaxis, :]
+        dir_input = dir_input[np.newaxis, :]
+        if is_test:
+            #action network to calculate action, right
+            action_value = self.sess.run(self.a, feed_dict={self.dir: dir_input, self.image: image_input})
+            print("action_value: ", action_value)
+            actions = [0,0]
+            actions[0] = np.clip(action_value[0][0], 0, 0.6)
+            actions[1] = np.clip(action_value[0][1], -0.6, 0.6)
+            print("is_test    ", actions)
+            return actions
+        else:
+            if(self.memory_counter > self.memory_size):
+                if np.random.uniform() < self.epsilon:
+                    action_value = self.sess.run(self.a, feed_dict={self.dir: dir_input, self.image: image_input})
+                    actions = [0,0]
+                    actions[0] = np.clip(action_value[0][0], 0, 0.6)
+                    actions[1] = np.clip(action_value[0][1], -0.6, 0.6)
+                else:
+                    actions = [0,0]
+                    actions[0] = np.random.random()*0.6
+                    actions[1] = (np.random.random()-0.5)*2*0.6
+                print("is_train    ", actions)
+            else:
+                actions = [0,0]
+                actions[0] = np.random.random()*0.6
+                actions[1] = (np.random.random()-0.5)*2*0.6
+            return actions
+
+    def learn(self):
+        indices = np.random.choice(self.memory_size, size=self.batch_size)
+        bt = self.memory[indices, :]
+        bs = bt[:, :self.dir_dim]
+        bimg = bt[:, self.dir_dim: self.dir_dim+self.n_features].reshape(self.batch_size, self.image_size[0], self.image_size[1], self.image_size[2])
+        ba = bt[:, self.dir_dim+self.n_features: self.dir_dim+self.n_features + self.action_dim]
+        br = bt[:, -self.dir_dim-self.n_features - 1: -self.dir_dim-self.n_features]
+        bs_ = bt[:, -self.dir_dim-self.n_features:-self.n_features]
+        bimg_ = bt[:, -self.n_features:].reshape(self.batch_size, self.image_size[0], self.image_size[1], self.image_size[2])
+
+        _, loss = self.sess.run([self.atrain, self.a_loss], {self.dir: bs, self.image:bimg})
+        print("learn loss:", loss)
+        self.sess.run(self.ctrain, {self.dir: bs, self.image:bimg, self.a: ba, self.R: br, self.dir_: bs_, self.image_:bimg_})
+
+        self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < 0.9 else 0.9
 
     def save_train_model(self):
         self.logger.save_train_model(self.sess)

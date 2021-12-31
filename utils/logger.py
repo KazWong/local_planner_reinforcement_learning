@@ -72,6 +72,13 @@ class EpochLogger(object):
         self.train_saver.restore(sess, tf.train.latest_checkpoint(fpath))
         print("Model restored from path: %s" % fpath)
 
+    def restore_weight(self, sess, var_list):
+        fpath = 'train_save2'
+        fpath = os.path.join(self.output_dir, fpath)
+        print('restore weights: ', fpath)
+        self.train_restore = tf.train.Saver(var_list)
+        self.train_restore.restore(sess, tf.train.latest_checkpoint(fpath))
+
     def save_model_info(self, sess):
         tf.train.write_graph(sess.graph_def, self.output_dir, 'model_info.pbtxt', True)
 
