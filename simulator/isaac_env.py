@@ -16,7 +16,7 @@ import cv2
 class IsaacEnv(Env):
 	def __init__(self, cfg_names):
 	    super().__init__(cfg_names)
-	    self.startup_config = {"renderer": "RayTracedLighting", "headless": False, "experience": f'{os.environ["EXP_PATH"]}/omni.isaac.sim.python.kit'}
+	    self.startup_config = {"renderer": "RayTracedLighting", "headless": False, "experience": '/home/slam/.local/share/ov/pkg/isaac_sim-2021.1.1/apps/omni.isaac.sim.python.kit'}
 	    self.kit = OmniKitHelper(self.startup_config)
 	    import omni
 	    from pxr import UsdGeom
@@ -216,7 +216,7 @@ class IsaacEnv(Env):
 
 	def robot_control(self, action):
 	    # wheel_back_left, wheel_back_right, wheel_front_left, wheel_front_right
-	    self.converted_cmd = self.convert_speed(action)
+	    #self.converted_cmd = self.convert_speed(action)
 	    #self.test_rob.command(self.converted_cmd)
 	    self.test_rob.command(action)
 	    #self.test_rob.command((-20, 20, -20, 20))
@@ -281,4 +281,4 @@ class IsaacEnv(Env):
 	    self.obstacles_ranges = []
 	    self.images_ptr.append(0)
 	    self.obstacles_ranges.append([])
-	    self.converted_cmd = (0,0,0,0)
+	    #self.converted_cmd = (0,0,0,0)

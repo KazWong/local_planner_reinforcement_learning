@@ -18,13 +18,11 @@ class Robot_config:
         TRANSLATION_RANGE = 1000.0
         translation = np.random.rand(3) * TRANSLATION_RANGE
         angle = np.random.rand(1)
-        print("X" * 10)
         print(robot_prim)
         xform = UsdGeom.Xformable(robot_prim)
         print(xform)
         print("stage is ", stage)
         print("prim path is ", prim_path)
-        print("X"* 10)
         xform_op = xform.AddXformOp(UsdGeom.XformOp.TypeTransform, UsdGeom.XformOp.PrecisionDouble, "")
         mat = Gf.Matrix4d().SetTranslate(translation.tolist())
         mat.SetRotateOnly(Gf.Rotation(Gf.Vec3d(0, 0, 1), (angle[0])))
