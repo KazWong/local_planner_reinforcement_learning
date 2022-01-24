@@ -41,8 +41,9 @@ class Robot_config:
 
         wheel_front_right_joint = UsdPhysics.DriveAPI.Apply(stage.GetPrimAtPath(f"{prim_path}/agv_base_link/wheel_front_right_joint"), "angular")
         wheel_front_right_joint.GetDampingAttr().Set(DRIVE_STIFFNESS)
-
-    def teleport(self, robot_prim, location, rotation, settle=False):
+        self.ar = self.dc.get_articulation(robot_prim.GetPath().pathString)
+        
+    def teleport(self, robot_prim, location, rotation, kit, settle=True):
         from pxr import Gf
         from omni.isaac.dynamic_control import _dynamic_control
         print("before teleport", self.ar)
@@ -62,13 +63,13 @@ class Robot_config:
         self.dc.set_rigid_body_pose(chassis, tf)
         self.dc.set_rigid_body_linear_velocity(chassis, [0, 0, 0])
         self.dc.set_rigid_body_angular_velocity(chassis, [0, 0, 0])
-        #self.command((-20, 20, -20, 20))
+        self.command([0,0])
         # Settle the robot onto the ground
         if settle:
             frame = 0
             velocity = 1
             while velocity > 0.1 and frame < 120:
-                self.omni.usd.get_context().update(1.0 / 60.0)
+                kit.update(1.0 / 60.0)
                 lin_vel = self.dc.get_rigid_body_linear_velocity(chassis)
                 velocity = np.linalg.norm([lin_vel.x, lin_vel.y, lin_vel.z])
                 frame = frame + 1
@@ -89,10 +90,10 @@ class Robot_config:
         return odom
 
     def command(self, action):
-        print("linear speed is ", action[0], " ", action[0]/self.meters_per_unit)
-        print("angular speed is ", action[1])
-        #cmd_vel = [action[0]/self.meters_per_unit, 0.0, action[1]]
-        cmd_vel = [0.5/self.meters_per_unit, 0.0, 0.0]
+        #print("linear speed is ", action[0], " ", action[0]/self.meters_per_unit)
+        #print("angular speed is ", action[1])
+        cmd_vel = [action[0]/self.meters_per_unit, 0.0, action[1]]
+        #cmd_vel = [0.5/self.meters_per_unit, 0.0, 0.0]
         chassis = self.dc.get_articulation_root_body(self.ar)
         #num_joints = self.dc.get_articulation_joint_count(self.ar)
         #num_dofs = self.dc.get_articulation_dof_count(self.ar)
@@ -111,22 +112,32 @@ class Robot_config:
         wheel_front_left_speed = self.wheel_speed_from_motor_value(motor_value[2])
         wheel_front_right_speed = self.wheel_speed_from_motor_value(motor_value[3])
 
-        self.dc.set_dof_velocity_target(wheel_back_left, np.clip(wheel_back_left_speed, -10, 10))
-        self.dc.set_dof_velocity_target(wheel_back_right, np.clip(wheel_back_right_speed, -10, 10))
-        self.dc.set_dof_velocity_target(wheel_front_left, np.clip(wheel_front_left_speed, -10, 10))
-        self.dc.set_dof_velocity_target(wheel_front_right, np.clip(wheel_front_right_speed, -10, 10))
+        #print("wheel_back_left_speed is ", wheel_back_left_speed)
+        #print("wheel_back_right_speed is ", wheel_back_right_speed)
+        #print("wheel_front_left_speed is ", wheel_front_left_speed)
+        #print("wheel_front_right_speed is ", wheel_front_right_speed)
+        
+        self.dc.set_dof_velocity_target(wheel_back_left, np.clip(wheel_back_left_speed, -100, 100))
+        self.dc.set_dof_velocity_target(wheel_back_right, np.clip(wheel_back_right_speed, -100, 100))
+        self.dc.set_dof_velocity_target(wheel_front_left, np.clip(wheel_front_left_speed, -100, 100))
+        self.dc.set_dof_velocity_target(wheel_front_right, np.clip(wheel_front_right_speed, -100, 100))
 
     def commands(self,action, angle):
-        print("linear speed is", action[0]/self.meters_per_unit)
-        print("angular speed is", action[1]/self.meters_per_unit)
+        #print("linear speed is", action[0]/self.meters_per_unit)
+        #print("angular speed is", action[1]/self.meters_per_unit)
         chassis = self.dc.get_articulation_root_body(self.ar)
         self.dc.wake_up_articulation(self.ar)
-        print("radian is ", angle)
-        print("degree is ", angle * 180 / math.pi)
-        print("x speed is ", action[0] / self.meters_per_unit * math.cos(angle * 180 / math.pi))
-        print("y speed is ", -action[0] / self.meters_per_unit * math.sin(angle * 180 / math.pi))
-        self.dc.set_rigid_body_linear_velocity(chassis, [action[0] / self.meters_per_unit * math.cos(angle * 180 / math.pi), -action[0] / self.meters_per_unit * math.sin(angle * 180 / math.pi), 0])
+        #print("radian is ", angle)
+        #print("degree is ", angle * 180 / math.pi)
+        #print("x speed is ", action[0] / self.meters_per_unit * math.cos(angle * 180 / math.pi))
+        #print("y speed is ", -action[0] / self.meters_per_unit * math.sin(angle * 180 / math.pi))
+        #self.dc.set_rigid_body_linear_velocity(chassis, [action[0] / self.meters_per_unit * math.cos(angle * 180 / math.pi), -action[0] / self.meters_per_unit * math.sin(angle * 180 / math.pi), 0])
         #self.dc.set_rigid_body_angular_velocity(chassis, [0, 0, action[1]])
+        print("in commands action is ", action[0])
+        print("in commands action is ", action[1])       
+        print("in commands action ros is ", action[0]/ self.meters_per_unit)        
+        self.dc.set_rigid_body_linear_velocity(chassis, [action[0] / self.meters_per_unit, 0, 0])
+        self.dc.set_rigid_body_angular_velocity(chassis, [0, 0, action[1]])
         #self.dc.set_rigid_body_linear_velocity(chassis, [100, -100, 0])
         #self.dc.set_rigid_body_angular_velocity(chassis, [0, 0, -10])
 
@@ -151,11 +162,27 @@ class Robot_config:
     def get_current_vel(self):
         chassis = self.dc.get_articulation_root_body(self.ar)
         linear_vel = self.dc.get_rigid_body_linear_velocity(chassis)
+        #local_linear_vel = self.dc.get_rigid_body_local_linear_velocity(chassis)
+        #norm_linear_vel = np.linalg.norm([linear_vel.x, linear_vel.y, linear_vel.z])
+        #norm_local_linear_vel = np.linalg.norm([local_linear_vel.x, local_linear_vel.y, local_linear_vel.z])
         angular_vel = self.dc.get_rigid_body_angular_velocity(chassis)
+        current_pose = self.dc.get_rigid_body_pose(chassis)
         #linear_vel = (linear_vel[0]*self.meters_per_unit, linear_vel[1]*self.meters_per_unit, linear_vel[2]*self.meters_per_unit)
-        print("linear vel is ", (linear_vel[0]*self.meters_per_unit, linear_vel[1]*self.meters_per_unit, linear_vel[2]*self.meters_per_unit))
-        print("angular vel is ", angular_vel)
-        return linear_vel, angular_vel
+        print("current world position is ", current_pose.p)
+        print("rotation is ", current_pose.r)
+        print("linear vel in get current vel is ", (linear_vel[0]*self.meters_per_unit, 0.0,0.0))
+        #print("local linear vel in get current vel is ", (local_linear_vel[0]*self.meters_per_unit, local_linear_vel[1]*self.meters_per_unit, local_linear_vel[2]*self.meters_per_unit))
+        #print("norm linear vel in get current vel is ", norm_linear_vel)
+        #print("norm local linear vel in get current vel is ", norm_local_linear_vel)
+        print("angular vel is ", (0.0, 0.0, angular_vel[2]))
+        #linear_vel = [linear_vel[0]*self.meters_per_unit * math.cos(angular_vel[2] * 180 / math.pi), -linear_vel[0]*self.meters_per_unit * math.sin(angular_vel[2] * 180 / math.pi), 0]
+        #angular_vel = [angular_vel[0],angular_vel[1],angular_vel[2]]
+        #print("final linear vel is ", (linear_vel[0]*self.meters_per_unit * math.cos(angular_vel[2] * 180 / math.pi), -linear_vel[0]*self.meters_per_unit * math.sin(angular_vel[2] * 180 / math.pi), 0))
+        #linear_vel = [linear_vel[0]*self.meters_per_unit, linear_vel[1]*self.meters_per_unit, 0.0]
+        #angular_vel = [angular_vel[0],angular_vel[1],angular_vel[2]]
+        linear_vel = [linear_vel[0]*self.meters_per_unit, 0.0, 0.0]
+        angular_vel = [0.0, 0.0,angular_vel[2]]        
+        return linear_vel, angular_vel, current_pose.r
 
     def check_overlap_box(self):
         # Defines a cubic region to check overlap with

@@ -1,5 +1,5 @@
 from env import Env
-from isaac_ros import *
+from isaac_ros_tf import *
 import numpy as np
 import random
 import math
@@ -7,11 +7,14 @@ import os
 from test_env import Env_config
 from test_robot import Robot_config
 from geometry_msgs.msg import Twist
-from isaac_ros import Send_data
+#from isaac_ros_tf import Send_data
+#from isaac_ros_tf2 import Send_data
 from omni.isaac.python_app import OmniKitHelper
 import copy
 import time
 import cv2
+import threading
+from threading import Thread
 
 class IsaacEnv(Env):
 	def __init__(self, cfg_names):
@@ -36,37 +39,36 @@ class IsaacEnv(Env):
 	    self.meters_per_unit = UsdGeom.GetStageMetersPerUnit(self.omni.usd.get_context().get_stage())
 	    while self.kit.is_loading():
 	        self.kit.update(1 / 60.0)
+	    self.lv = 0
+	    self.av = 0
 	    self.discrete_actions = \
         [[0.0, -0.9], [0.0, -0.6], [0.0, -0.3], [0.0, 0.05], [0.0, 0.3], [0.0, 0.6], [0.0, 0.9],
         [0.2, -0.9], [0.2, -0.6], [0.2, -0.3], [0.2, 0], [0.2, 0.3], [0.2, 0.6], [0.2, 0.9],
         [0.4, -0.9], [0.4, -0.6], [0.4, -0.3], [0.4, 0], [0.4, 0.3], [0.4, 0.6], [0.4, 0.9],
         [0.6, -0.9], [0.6, -0.6], [0.6, -0.3], [0.6, 0], [0.6, 0.3], [0.6, 0.6], [0.6, 0.9]]
-	def get_states(self, counter):
-	    save_img=None
-	    lv, av = self.test_rob.get_current_vel()
-	    while True:
-	        #print("in while loop, counter is", counter)
-	        #counter+=1
-	        if self.send_data.send_odom(lv, av) == True:
-	            break
-	    #return
-	    #print("counter is ", counter)
-	    if counter < 6:
-	        return
+	def get_states(self, save_img=None):    
+	    states, images_last, min_dists, collisions, scans, vels = self.get_robots_state()
+	    if save_img != None:
+	        cv2.imwrite(save_img + "_robot" + ".png", images_last * 255)
+	    ptr = self.images_ptr[0]
+	    if ptr < self.image_batch:
+	        for j in range(ptr, self.image_batch):
+	            self.images_batch[j] = copy.deepcopy(images_last)
 	    else:
-	        states, images_last, min_dists, collisions, scans, vels = self.get_robots_state()
-	        if save_img != None:
-	            cv2.imwrite(save_img + "_robot" + ".png", images_last * 255)
-	        ptr = self.images_ptr[0]
-	        if ptr < self.image_batch:
-	            for j in range(ptr, self.image_batch):
-	                self.images_batch[j] = copy.deepcopy(images_last)
-	        else:
-	            self.images_batch[ptr % self.image_batch] = copy.deepcopy(images_last)
-	        self.images_ptr[0] += 1
-	        images_reshape = np.transpose(self.images_batch, (1, 2, 0))
-	        return (np.array(states), images_reshape, min_dists, collisions, scans, vels)
-
+	        self.images_batch[ptr % self.image_batch] = copy.deepcopy(images_last)
+	    self.images_ptr[0] += 1
+	    images_reshape = np.transpose(self.images_batch, (1, 2, 0))
+	    return (np.array(states), images_reshape, min_dists, collisions, scans, vels)
+	
+	def odom_thread(self):
+	    while True:
+	        print("***in send odometry thread***")
+	        self.lv, self.av, robot_rotation = self.test_rob.get_current_vel()
+	        print("in get states lv is", self.lv)
+	        print("in get states av is", self.av)
+	        print("in get states angle is ", robot_rotation[2])
+	        self.send_data.send_odom(self.lv[0], self.av[2], robot_rotation[2]* 180 / math.pi)
+        
 	def get_robots_state(self):
 	    state = self.state_last
 	    image = self.image_trans(state.laser_image)
@@ -75,12 +77,15 @@ class IsaacEnv(Env):
 	    is_collision = state.collision
 	    scan = state.laser
 	    vel = state.vel
+	    #print("*"*20)
+	    #print("min_dist is ", min_dist)
+	    #print("*"*20)
 	    return goal_pose, image, min_dist, is_collision, scan, vel
 
 	def get_rewards(self, state, min_dist, is_collision):
-	    #print("state is", state)
 	    distance_reward_factor = 200
 	    obs_reward_factor = 100
+	    
 	    print("dist to obs: ", min_dist)
 	    reward = collision_reward = reach_reward = step_reward = distance_reward = 0
 	    done = 0
@@ -91,11 +96,15 @@ class IsaacEnv(Env):
 	        else:
 	            collision_reward = (min_dist - self.last_d_obs) * obs_reward_factor
 	            self.last_d_obs = min_dist
+	            
 	    print("collision: ", is_collision)
+	    
+	    #if min_dist <= self.collision_th:  
 	    if is_collision:
 	        print("collision!!!!!!!!")
 	        done = -1
 	        collision_reward = -500
+	        
 	    d = math.sqrt(state[0] * state[0] + state[1] * state[1])
 	    print("dist to goal: ", d)
 	    if d < 0.3:
@@ -110,15 +119,16 @@ class IsaacEnv(Env):
 	            distance_reward = (self.last_d - d) * distance_reward_factor
 	            self.last_d = d
 	        step_reward = -5
+            # distance_reward = (distance_reward_factor * 1/d)
+	        
 	    reward = collision_reward + reach_reward + step_reward + distance_reward
 	    print("reward is: ", reward)
-	    print("done is: ", done)
-
 	    if done < 0 and self.done == 0:
 	        self.done = done
 	    return (reward, done)
 
-	def reset(self, target_dist, counter):
+	def reset(self, target_dist = 0.0):
+	    #self.robot_control([0, 0])
 	    # random env
 	    print("RANDOM ENVIRONMENT!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	    self.dr_interface.randomize_once()
@@ -131,21 +141,22 @@ class IsaacEnv(Env):
 	    #prim_path = self.omni.usd.get_stage_next_free_path(stage, self.prefix, False)
 	    #print("prim_path is ", prim_path)
 	    robot_prim = stage.GetPrimAtPath(self.prefix)
-	    print("robot_prim is ", robot_prim)
+	    #print("robot_prim is ", robot_prim)
 	    self.reset_robots(target_dist=target_dist)
+	    #time.sleep(0.5)
 	    print("in reset, initial pose is ", self.init_poses)
 	    print("in reset, target pose is ", self.target_poses)
 
-	    self.test_rob.teleport(robot_prim, (self.init_poses[0][0],self.init_poses[0][1],-10), self.init_poses[0][2])
+	    self.test_rob.teleport(robot_prim, (self.init_poses[0][0],self.init_poses[0][1],-10), self.init_poses[0][2]* 180 / math.pi, self.kit)
 	    #self.robot_control([0, 0])
 	    self.kit.update(1 / 60.0)
-	    #time.sleep(1)
+	    time.sleep(0.5)
 	    self.last_d_obs = -1
 	    self.last_d = -1
 	    self.done = 0
 	    self.reset_count += 1
 	    self.step_count = 0
-	    return self.get_states(counter)
+	    return self.get_states()
 
 	def reset_robots(self, target_dist=0.0):
 	    self.init_poses = []
@@ -166,10 +177,10 @@ class IsaacEnv(Env):
 	            break
 	    print("init poses are: ", self.init_poses)
 	    print("target poses are: ", self.target_poses)
-	    self.init_poses = [[element / self.meters_per_unit for element in self.init_poses[0]]]
-	    self.target_poses = [[element / self.meters_per_unit for element in self.target_poses[0]]]
-	    #self.init_poses = [[self.init_poses[0][0] / self.meters_per_unit, self.init_poses[0][1] / self.meters_per_unit, self.init_poses[0][2]]]
-	    #self.target_poses = [[self.target_poses[0][0] / self.meters_per_unit, self.target_poses[0][1] / self.meters_per_unit, self.target_poses[0][2]]]
+	    #self.init_poses = [[element / self.meters_per_unit for element in self.init_poses[0]]]
+	    #self.target_poses = [[element / self.meters_per_unit for element in self.target_poses[0]]]
+	    self.init_poses = [[self.init_poses[0][0] / self.meters_per_unit, self.init_poses[0][1] / self.meters_per_unit, self.init_poses[0][2]]]
+	    self.target_poses = [[self.target_poses[0][0] / self.meters_per_unit, self.target_poses[0][1] / self.meters_per_unit, self.target_poses[0][2]]]
 
 	    #print("init poses in omniverse are: ", self.init_poses)
 	    #print("target poses in omniverse are: ", self.target_poses)
@@ -196,18 +207,19 @@ class IsaacEnv(Env):
 	        if test_d <= d:
 	            return False
 	    return True
-	def step_discrete(self, action, counter):
-	    return self.step(self.discrete_actions[action], counter)
+	def step_discrete(self, action):
+	    return self.step(self.discrete_actions[action])
 
-	def step(self, action, counter):
-	    print("-"*50)
+	def step(self, action):
+	    #print("-"*50)
 	    print("action in step is ", action)
 	    self.robot_control(action)
-	    #self.kit.update()
-	    #time.sleep(1)
 	    #rospy.sleep(self.control_hz)
 	    self.step_count += 1
-	    states = self.get_states(counter)
+	    states = self.get_states()
+	    self.kit.update(1 / 60.0)
+	    print("step number ", self.step_count)
+	    #print("states in this step is ", states)
 	    rw = self.get_rewards(states[0], states[2], states[3])
 	    if rw == False:
 	        return False, False, False
@@ -220,13 +232,17 @@ class IsaacEnv(Env):
 	    #self.test_rob.command(self.converted_cmd)
 	    self.test_rob.command(action)
 	    #self.test_rob.command((-20, 20, -20, 20))
+	    ########################################################check
 	    #self.test_rob.commands(action, self.init_poses[0][2])
+	    #self.test_rob.commands([0.6,0.6], self.init_poses[0][2])
 	    self.kit.update(1 / 60.0)
 	    vel = Twist()
 	    print("done is ",self.done)
 	    if self.done == 0:
-	        vel.linear.x = action[0]/self.meters_per_unit
-	        vel.angular.z = action[1]
+	        #vel.linear.x = action[0]/self.meters_per_unit
+	        #vel.angular.z = action[1]
+	        vel.linear.x = self.lv[0]/self.meters_per_unit
+	        vel.angular.z = self.av[2]
 	    else:
 	        vel.linear.x = 0
 	        vel.angular.z = 0
@@ -255,7 +271,7 @@ class IsaacEnv(Env):
 	    #env_path = nucleus + "/Library/Environments/test_env.usd"
 	    print(env_path)
 	    self.omni.usd.get_context().open_stage(env_path, None)
-	    obj_list = self.test_env.create_objects(3,3,0)
+	    obj_list = self.test_env.create_objects(0,0,0)
 	    print(obj_list)
 	    self.test_env.domain_randomization_test(obj_list)
 
@@ -270,7 +286,15 @@ class IsaacEnv(Env):
 	    self.test_rob.spawn(stage, robot_prim, prim_path)
 	    ext_manager = self.omni.kit.app.get_app().get_extension_manager()
 	    ext_manager.set_extension_enabled_immediate("omni.isaac.ros_bridge", True)
-
+	    self.kit.play()
+	    while self.kit.is_loading():
+	        self.kit.update(1 / 60.0)
+	    robot_prim = stage.GetPrimAtPath(self.prefix)
+	    self.reset_robots(0.0)
+	    self.test_rob.teleport(robot_prim, (self.init_poses[0][0],self.init_poses[0][1],-10), self.init_poses[0][2]* 180 / math.pi, self.kit)
+	    self.send_odom_thread = threading.Thread(target=self.odom_thread)
+	    self.send_odom_thread.start()
+        
 	def init_datas(self):
 	    self.last_d = -1
 	    self.last_d_obs = -1
@@ -281,4 +305,3 @@ class IsaacEnv(Env):
 	    self.obstacles_ranges = []
 	    self.images_ptr.append(0)
 	    self.obstacles_ranges.append([])
-	    #self.converted_cmd = (0,0,0,0)

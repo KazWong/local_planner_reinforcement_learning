@@ -15,10 +15,10 @@ tf.enable_resource_variables()
 config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
 sess = tf.Session(config=config)
 
-is_train = True
-is_restore_model = False
-#is_train = False
-#is_restore_model = True
+#is_train = True
+#is_restore_model = False
+is_train = False
+is_restore_model = True
 
 
 MEMORY_SIZE = 50000    #sumtree size
@@ -44,51 +44,63 @@ def train(RL):
     total_steps = 0
     epochs = 1000000
     steps_per_epoch = 1500
-    episode_max_len = 300
-    #episode_max_len = 1000
+    #episode_max_len = 300
+    episode_max_len = 1000
     env.env_init()
     env.robot_init()
+    counter = 0
     for epoch in range(epochs):
         #every epoch, save model and output summary log
         env.epoch = epoch
-        observation = env.reset(target_dist = 0.5)
-        print("observation is ", observation)
+        target_dist = 0.5
+        observation = env.reset(target_dist,counter)
+        counter +=1
+        #print("observation is ", observation)
         #exceed this value means cannot reach goal in certain time
         ep_len = 0.0
         #reward accumulation
         ep_return = 0.0
+        step_counter = 0
         for step in range(steps_per_epoch):
+            print("counter is ", counter)
+            print("step counter is ", step_counter)
             #choose action from eval net
-            action = RL.choose_action([observation[0], observation[1]], env.discrete_actions, is_test=False)
-            print("action is ", action)
-            observation_, reward, done = env.step_discrete(action)
+            #continue
+            if counter < 10:
+                continue
+            else:
+                action = RL.choose_action([observation[0], observation[1]], env.discrete_actions, is_test=False)
+                print("action is ", action)
+                observation_, reward, done = env.step_discrete(action, counter)
             #rospy.sleep(rospy.Duration(10, 0))
-            print("-----special done is --------", env.done)
-            if env.done != -100:
+                print("-----special done is --------", env.done)
+                if env.done != -100:
                 #(S,A,R,S')
-                RL.store_transition([observation[0], observation[1]], action, reward, [observation_[0], observation_[1]])
-                ep_return += reward
-                ep_len += 1
-                if env.done < 0:
+                    RL.store_transition([observation[0], observation[1]], action, reward, [observation_[0], observation_[1]])
+                    ep_return += reward
+                    ep_len += 1
+                    if env.done < 0:
+                        env.done = -100
+                if ep_len > episode_max_len:
                     env.done = -100
-            if ep_len > episode_max_len:
-                env.done = -100
-            observation = observation_
-            if env.done == -100:
-                print("epoch: ", epoch)
-                print("ep_return: ", ep_return)
-                print("ep_len", ep_len)
-                env.robot_control([0,0])
+                observation = observation_
+                if env.done == -100:
+                    print("epoch: ", epoch)
+                    print("ep_return: ", ep_return)
+                    print("ep_len", ep_len)
+                    env.robot_control([0,0])
                 #
-                total_steps += np.array(ep_len).sum()
-                if total_steps > BATCH_SIZE:
-                    for i in range(100):
+                    total_steps += np.array(ep_len).sum()
+                    if total_steps > BATCH_SIZE:
+                        for i in range(100):
                         #TODO: when to learn -> training performance
-                        abs_errors, loss = RL.learn()
-                    RL.save_train_model()
-                ep_len = 0.0
-                ep_return = 0.0
-                observation = env.reset(target_dist = 0.5)
+                            abs_errors, loss = RL.learn()
+                        RL.save_train_model()
+                    ep_len = 0.0
+                    ep_return = 0.0
+                    print("perform reset after step")
+                    observation = env.reset(target_dist,counter)
+                step_counter +=1
         #TODO: save ep_len, ep_return and loss
         if total_steps > BATCH_SIZE:
             RL.logger.log_tabular('epoch', epoch)
@@ -97,6 +109,8 @@ def train(RL):
 
 
 def test(RL,test_replay_):
+    env.env_init()
+    env.robot_init()
     dt = env.control_hz
     env.set_colis_dist(0.5)
     #how much times to test
@@ -117,9 +131,12 @@ def test(RL,test_replay_):
     av_w = 0.0
     av_total_theta = 0.0
     av_total_delta_w = 0.0
-
+    target_dist = 0.5
+    counter = 0
     for i in range(test_replay):
-        observation = env.reset(target_dist = 0.5)
+        print("perform testing")
+        observation = env.reset(target_dist,counter)
+        counter +=1
         steps = 0
         r_obs = 0.0
         is_end = 0
@@ -135,53 +152,55 @@ def test(RL,test_replay_):
         wmax = 0.0
         total_theta = 0.0
         total_delta_w = 0.0
-
-        while True:
-            steps += 1
-            action = RL.choose_action([observation[0], observation[1]], env.discrete_actions, is_test=True)
-            v = env.discrete_actions[action][0]
-            w = env.discrete_actions[action][1]
-            if v > vmax:
-                vmax = v
-            if math.fabs(w) > wmax:
-                wmax = math.fabs(w)
-            trajectory_length += dt * v
-            total_theta += dt * math.fabs(w)
-            total_delta_v += math.fabs(v - env.discrete_actions[last_action][0])
-            total_delta_w += math.fabs(w - env.discrete_actions[last_action][1])
-
-            observation_, reward, done = env.step_discrete(action)
-
-            if is_end == 0:
-                ep_return += reward
-                ep_len += 1
-                r_obs += dt * 1.0 / observation_[2]
-
-                if env.done < 0 or steps > 200:
-                    is_end = 1
-                    av_reward += ep_return
-                    av_vmax += vmax
-                    av_wmax += wmax
-                    if env.done == -1:
-                        collision += 1
-                        step_per_collision += ep_len
-                    elif env.done == -2:
-                        reach += 1
-                        step_per_reach += ep_len
-                        av_r_obs += r_obs
-                        av_trajectory_length += trajectory_length
-                        av_total_theta += total_theta
-                        av_total_delta_v += total_delta_v
-                        av_total_delta_w += total_delta_w
-                    elif steps > 200:
-                        stuck += 1
-
-            print("done: ", env.done)
-            if is_end == 1 or steps > 200:
-                env.robot_control([0,0])
-                break
-            observation = observation_
-            last_action = action
+        if counter < 10:
+            continue
+        else:
+            while True:
+                steps += 1
+                action = RL.choose_action([observation[0], observation[1]], env.discrete_actions, is_test=True)
+                v = env.discrete_actions[action][0]
+                w = env.discrete_actions[action][1]
+                if v > vmax:
+                    vmax = v
+                if math.fabs(w) > wmax:
+                    wmax = math.fabs(w)
+                trajectory_length += dt * v
+                total_theta += dt * math.fabs(w)
+                total_delta_v += math.fabs(v - env.discrete_actions[last_action][0])
+                total_delta_w += math.fabs(w - env.discrete_actions[last_action][1])
+ 
+                observation_, reward, done = env.step_discrete(action, counter)
+ 
+                if is_end == 0:
+                    ep_return += reward
+                    ep_len += 1
+                    r_obs += dt * 1.0 / observation_[2]
+ 
+                    if env.done < 0 or steps > 200:
+                        is_end = 1
+                        av_reward += ep_return
+                        av_vmax += vmax
+                        av_wmax += wmax
+                        if env.done == -1:
+                            collision += 1
+                            step_per_collision += ep_len
+                        elif env.done == -2:
+                            reach += 1
+                            step_per_reach += ep_len
+                            av_r_obs += r_obs
+                            av_trajectory_length += trajectory_length
+                            av_total_theta += total_theta
+                            av_total_delta_v += total_delta_v
+                            av_total_delta_w += total_delta_w
+                        elif steps > 200:
+                            stuck += 1
+ 
+                print("done: ", env.done)
+                if is_end == 1 or steps > 200:
+                    env.robot_control([0,0])
+                    break
+                observation = observation_
+                last_action = action
     if reach != 0:
         step_per_reach = step_per_reach / reach
         av_r_obs = av_r_obs / reach
