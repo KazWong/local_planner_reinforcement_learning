@@ -52,7 +52,7 @@ def train(RL):
         #every epoch, save model and output summary log
         env.epoch = epoch
         observation = env.reset(target_dist = 0.5)
-        print("observation is ", observation)
+        #print("observation is ", observation)
         #exceed this value means cannot reach goal in certain time
         ep_len = 0.0
         #reward accumulation
