@@ -7,4 +7,5 @@
 # Run Isaac RL
 1. roscore
 2. roslaunch scan_img lscm.launch
-3. python dqn_run.py
+3. source /path/to/isaac_sim-2021.2.0/setup_python_env.sh
+4. /path/to/isaac_sim-2021.2.0/python.sh dqn_run_isaac.py
